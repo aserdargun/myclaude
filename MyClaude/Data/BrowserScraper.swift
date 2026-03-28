@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 
 /// Data scraped from claude.ai/settings usage page.
 struct ScrapedUsageData {

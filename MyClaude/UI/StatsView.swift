@@ -3,6 +3,7 @@ import SwiftUI
 struct StatsView: View {
     let weeklyStats: WeeklyStats
     let todayStats: DailyStats
+    let todaySessionCount: Int
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -11,7 +12,7 @@ struct StatsView: View {
 
             StatRow(label: "Tokens", value: formatTokens(todayStats.totalTokens))
             StatRow(label: "Events", value: "\(todayStats.eventCount)")
-            StatRow(label: "Sessions", value: "\(todayStats.sessionCount)")
+            StatRow(label: "Sessions", value: "\(todaySessionCount)")
 
             Divider()
 

@@ -7,11 +7,11 @@ protocol SessionEngineDelegate: AnyObject {
 final class SessionEngine {
     weak var delegate: SessionEngineDelegate?
 
-    /// The current active session window, if any.
+    /// The current or most recent session window.
     private(set) var currentSession: UsageSession?
 
-    /// Past expired sessions for history tracking.
-    private(set) var sessionHistory: [UsageSession] = []
+    /// All detected session windows (including current).
+    private(set) var allSessions: [UsageSession] = []
 
     private let sessionDuration: TimeInterval
 
@@ -22,7 +22,6 @@ final class SessionEngine {
     // MARK: - Public API
 
     func processEvents(_ events: [UsageEvent]) {
-        // Sort all events chronologically and assign them to windows
         let sorted = events.sorted { $0.timestamp < $1.timestamp }
         for event in sorted {
             processEvent(event)
@@ -30,12 +29,10 @@ final class SessionEngine {
         delegate?.sessionEngine(self, didUpdateSession: currentSession)
     }
 
-    /// Called periodically to check if the current window has expired.
+    /// Called periodically — no-op for now, windows are managed during event processing.
     func tick() {
-        guard let session = currentSession, session.isExpired else { return }
-        sessionHistory.append(session)
-        currentSession = nil
-        delegate?.sessionEngine(self, didUpdateSession: nil)
+        // Nothing to do — we keep the most recent window visible even if expired,
+        // so the user can see their last session info.
     }
 
     // MARK: - Computed properties
@@ -44,21 +41,26 @@ final class SessionEngine {
         currentSession?.remainingTime ?? 0
     }
 
-    /// How much of the 5-hour window has elapsed (0.0 to 1.0).
     var sessionProgress: Double {
-        guard let session = currentSession, !session.isExpired else { return 0 }
+        guard let session = currentSession else { return 0 }
         let elapsed = Date().timeIntervalSince(session.windowStart)
         return min(1.0, elapsed / sessionDuration)
     }
 
+    /// Whether the current session window is still active (not expired).
     var isActive: Bool {
         currentSession?.isActive ?? false
     }
 
-    var currentAlertLevel: AlertLevel {
-        guard isActive else { return .safe }
+    /// Whether there's a session at all (active or recently expired).
+    var hasSession: Bool {
+        currentSession != nil
+    }
 
-        let remaining = remainingTime
+    var currentAlertLevel: AlertLevel {
+        guard let session = currentSession, session.isActive else { return .safe }
+
+        let remaining = session.remainingTime
         if remaining <= Constants.thirtyMinWarning {
             return .critical
         } else if remaining <= Constants.oneHourWarning {
@@ -67,13 +69,19 @@ final class SessionEngine {
         return .safe
     }
 
+    /// Number of detected sessions today.
+    var todaySessionCount: Int {
+        let startOfDay = Calendar.current.startOfDay(for: Date())
+        return allSessions.filter { $0.windowStart >= startOfDay }.count
+    }
+
     // MARK: - Private
 
     private func processEvent(_ event: UsageEvent) {
         if let session = currentSession {
             if event.timestamp >= session.windowEnd {
-                // This event falls after the current window — archive and start new
-                sessionHistory.append(session)
+                // Event falls after current window — archive and start new
+                finishSession()
                 startNewWindow(with: event)
             } else if event.timestamp >= session.windowStart {
                 // Event falls within current window
@@ -86,9 +94,20 @@ final class SessionEngine {
     }
 
     private func startNewWindow(with event: UsageEvent) {
-        currentSession = UsageSession(
+        let session = UsageSession(
             windowStart: event.timestamp,
             events: [event]
         )
+        currentSession = session
+        allSessions.append(session)
+    }
+
+    private func finishSession() {
+        // The session is already in allSessions (added in startNewWindow),
+        // but update it with final event list
+        if let session = currentSession, let idx = allSessions.lastIndex(where: { $0.id == session.id }) {
+            allSessions[idx] = session
+        }
+        currentSession = nil
     }
 }

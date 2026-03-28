@@ -24,15 +24,16 @@ struct MenuBarView: View {
 
             Divider()
 
-            // Section 2: Usage
+            // Section 2: Usage (last/current session)
             usageSection
 
             Divider()
 
-            // Section 3: Weekly
+            // Section 3: Today + Weekly
             StatsView(
                 weeklyStats: viewModel.weeklyStats,
-                todayStats: viewModel.todayStats
+                todayStats: viewModel.todayStats,
+                todaySessionCount: viewModel.todaySessionCount
             )
 
             Divider()
@@ -56,6 +57,7 @@ struct MenuBarView: View {
             SectionHeader(title: "Current Session", icon: "clock")
 
             if viewModel.isSessionActive {
+                // Active session
                 HStack {
                     Text("Resets in \(viewModel.remainingTime.compactRemaining)")
                         .font(.title3)
@@ -82,8 +84,29 @@ struct MenuBarView: View {
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                 }
+            } else if viewModel.hasSession {
+                // Session expired
+                HStack {
+                    Text("Session expired")
+                        .font(.title3)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                }
+
+                ProgressBarView(progress: 1.0, color: .gray)
+
+                if let start = viewModel.windowStartTime,
+                   let end = viewModel.windowEndTime {
+                    HStack {
+                        Text("Was: \(start.shortTimeString) – \(end.shortTimeString)")
+                        Spacer()
+                    }
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                }
             } else {
-                Text("No active session")
+                Text("No session detected")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                 Text("Start using Claude to begin tracking")
@@ -97,7 +120,10 @@ struct MenuBarView: View {
 
     private var usageSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            SectionHeader(title: "Current Usage", icon: "chart.pie")
+            SectionHeader(
+                title: viewModel.isSessionActive ? "Session Usage" : "Last Session Usage",
+                icon: "chart.pie"
+            )
 
             StatRow(
                 label: "Tokens",
@@ -122,6 +148,7 @@ struct MenuBarView: View {
                 StatRow(label: "Last log read", value: "Never")
             }
             StatRow(label: "Events parsed", value: "\(viewModel.totalEventsRead)")
+            StatRow(label: "Sessions detected", value: "\(viewModel.todaySessionCount)")
         }
     }
 

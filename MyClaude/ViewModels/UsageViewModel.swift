@@ -24,22 +24,27 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
     var windowStartTime: Date?
     var windowEndTime: Date?
     var isSessionActive: Bool = false
+    var hasSession: Bool = false
+    var todaySessionCount: Int = 0
     var isRefreshing: Bool = false
 
     // MARK: - Status bar display
 
     var menuBarTitle: String {
-        if !isSessionActive {
+        if isSessionActive {
+            let icon: String
+            switch alertLevel {
+            case .safe: icon = "🟢"
+            case .warning: icon = "🟡"
+            case .critical: icon = "🔴"
+            case .expired: icon = "⏹"
+            }
+            return "\(icon) \(remainingTime.compactRemaining)"
+        } else if hasSession {
+            return "⏹ Expired"
+        } else {
             return "⏸ No session"
         }
-        let icon: String
-        switch alertLevel {
-        case .safe: icon = "🟢"
-        case .warning: icon = "🟡"
-        case .critical: icon = "🔴"
-        case .expired: icon = "⏹"
-        }
-        return "\(icon) \(remainingTime.compactRemaining)"
     }
 
     var statusColor: Color {
@@ -120,20 +125,23 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
     private func tick() {
         sessionEngine.tick()
         updateUIState()
-        if let session = sessionEngine.currentSession {
+        if let session = sessionEngine.currentSession, session.isActive {
             alertEngine.evaluate(session: session, sessionEngine: sessionEngine)
         }
     }
 
     private func updateUIState() {
+        let session = sessionEngine.currentSession
         remainingTime = sessionEngine.remainingTime
         sessionProgress = sessionEngine.sessionProgress
         alertLevel = sessionEngine.currentAlertLevel
         isSessionActive = sessionEngine.isActive
-        windowStartTime = sessionEngine.currentSession?.windowStart
-        windowEndTime = sessionEngine.currentSession?.windowEnd
-        currentTokens = sessionEngine.currentSession?.totalTokens ?? 0
-        currentEventCount = sessionEngine.currentSession?.eventCount ?? 0
+        hasSession = sessionEngine.hasSession
+        windowStartTime = session?.windowStart
+        windowEndTime = session?.windowEnd
+        currentTokens = session?.totalTokens ?? 0
+        currentEventCount = session?.eventCount ?? 0
+        todaySessionCount = sessionEngine.todaySessionCount
         weeklyStats = aggregator.weeklyStats()
         todayStats = aggregator.todayStats()
         lastLogRead = logReader.lastReadTime

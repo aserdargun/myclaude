@@ -256,8 +256,8 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
                     self.isScraping = false
                     self.scrapeSuccess = true
                     // Auto-dismiss success after 3 seconds
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                        self.scrapeSuccess = false
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
+                        self?.scrapeSuccess = false
                     }
                 }
             } catch {

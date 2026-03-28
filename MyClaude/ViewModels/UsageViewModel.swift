@@ -93,18 +93,14 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
 
     var menuBarTitle: String {
         if isSessionActive {
-            let icon: String
-            switch alertLevel {
-            case .safe: icon = "🟢"
-            case .warning: icon = "🟡"
-            case .critical: icon = "🔴"
-            case .expired: icon = "⏹"
-            }
-            return "\(icon) \(remainingTime.compactRemaining)"
+            let mins = Int(remainingTime / 60)
+            let sessionPct = estimatedSessionPercent.map { "\(Int(min($0, 100)))%" } ?? "--"
+            let weeklyPct = estimatedWeeklyPercent.map { "\(Int(min($0, 100)))%" } ?? "--"
+            return "\(mins) min | \(sessionPct) | \(weeklyPct)"
         } else if hasSession {
-            return "⏹ Expired"
+            return "Expired"
         } else {
-            return "⏸ No session"
+            return "No session"
         }
     }
 

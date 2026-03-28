@@ -43,7 +43,7 @@ final class MyClaudeLogParser: ParserProtocol {
         let timestamp = extractTimestamp(from: json)
         let type = extractEventType(from: json)
         let message = json["message"] as? [String: Any]
-        let tokens = extractTokens(from: json, message: message)
+        let (tokens, weighted) = extractTokens(from: json, message: message)
         let model = message?["model"] as? String
         let sessionId = json["sessionId"] as? String
 
@@ -53,6 +53,7 @@ final class MyClaudeLogParser: ParserProtocol {
         return UsageEvent(
             timestamp: timestamp ?? Date(),
             tokens: tokens,
+            weightedTokens: weighted,
             type: type,
             model: model,
             sessionId: sessionId
@@ -72,7 +73,17 @@ final class MyClaudeLogParser: ParserProtocol {
 
     // MARK: - Tokens
 
-    private func extractTokens(from json: [String: Any], message: [String: Any]?) -> Int? {
+    /// Returns (rawTokens, weightedTokens).
+    ///
+    /// Raw = sum of all token fields (for display).
+    /// Weighted = cost-approximated tokens matching Claude's rate limiter.
+    ///
+    /// Weights based on Anthropic API pricing ratios:
+    ///   output_tokens:              1.0   (most expensive, base unit)
+    ///   input_tokens:               0.25  (4× cheaper than output)
+    ///   cache_creation_input:       0.3125 (slightly more than input)
+    ///   cache_read_input:           0.025  (40× cheaper than output)
+    private func extractTokens(from json: [String: Any], message: [String: Any]?) -> (Int?, Int?) {
         // Claude Code format: message.usage.{input_tokens, output_tokens, cache_read_input_tokens, cache_creation_input_tokens}
         if let usage = message?["usage"] as? [String: Any] {
             let input = usage["input_tokens"] as? Int ?? 0
@@ -80,22 +91,34 @@ final class MyClaudeLogParser: ParserProtocol {
             let cacheRead = usage["cache_read_input_tokens"] as? Int ?? 0
             let cacheCreation = usage["cache_creation_input_tokens"] as? Int ?? 0
             let total = input + output + cacheRead + cacheCreation
-            if total > 0 { return total }
+            if total > 0 {
+                let weighted = Int(
+                    Double(output) * 1.0
+                    + Double(input) * 0.25
+                    + Double(cacheCreation) * 0.3125
+                    + Double(cacheRead) * 0.025
+                )
+                return (total, weighted)
+            }
         }
 
         // Fallback: top-level usage object
         if let usage = json["usage"] as? [String: Any] {
             let input = usage["input_tokens"] as? Int ?? 0
             let output = usage["output_tokens"] as? Int ?? 0
-            if input + output > 0 { return input + output }
+            let total = input + output
+            if total > 0 {
+                let weighted = Int(Double(output) * 1.0 + Double(input) * 0.25)
+                return (total, weighted)
+            }
         }
 
-        // Fallback: direct token fields
+        // Fallback: direct token fields (no breakdown, use raw as weighted)
         for key in ["tokens", "total_tokens", "token_count"] {
-            if let val = json[key] as? Int { return val }
+            if let val = json[key] as? Int { return (val, val) }
         }
 
-        return nil
+        return (nil, nil)
     }
 
     // MARK: - Event type

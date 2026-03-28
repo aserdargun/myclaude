@@ -6,6 +6,7 @@ private struct SessionPeriod: Identifiable {
     let start: Date
     let end: Date
     let tokens: Int
+    let weightedTokens: Int
     let events: Int
     let isCurrent: Bool // contains "now"
 
@@ -116,6 +117,7 @@ struct SettingsView: View {
                 start: periodStart,
                 end: periodEnd,
                 tokens: usage.tokens,
+                weightedTokens: usage.weightedTokens,
                 events: usage.events,
                 isCurrent: isCurrent
             ))
@@ -126,11 +128,11 @@ struct SettingsView: View {
         return result
     }
 
-    /// Estimated % for a period using the effective burn rate.
-    private func estimatedPercent(tokens: Int) -> Double? {
+    /// Estimated % for a period using session burn rate.
+    private func estimatedPercent(weightedTokens: Int) -> Double? {
         guard let cal = viewModel.calibrationData,
-              cal.effectiveBurnRate > 0 else { return nil }
-        return Double(tokens) / cal.effectiveBurnRate
+              cal.sessionBurnRate > 0 else { return nil }
+        return Double(weightedTokens) / cal.sessionBurnRate
     }
 
     // MARK: - Calibration Input
@@ -312,12 +314,12 @@ struct SettingsView: View {
 
             // Tokens + estimated %
             HStack {
-                Text(formatTokens(period.tokens))
+                Text("\(formatTokens(period.weightedTokens))w")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
 
-                if let pct = estimatedPercent(tokens: period.tokens) {
-                    Text("(\(Int(min(pct, 999)))% used)")
+                if let pct = estimatedPercent(weightedTokens: period.weightedTokens) {
+                    Text("(\(Int(min(pct, 999)))%)")
                         .font(.caption2)
                         .foregroundStyle(period.isCurrent ? .blue : .secondary)
                 }
@@ -351,30 +353,25 @@ struct SettingsView: View {
 
     private func burnRatesSection(_ cal: CalibrationData) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            SectionHeader(title: "Burn Rates (tokens per 1%)", icon: "flame")
+            SectionHeader(title: "Burn Rates (weighted tokens per 1%)", icon: "flame")
 
             StatRow(
                 label: "Session",
                 value: cal.sessionBurnRate > 0
-                    ? "\(formatTokens(Int(cal.sessionBurnRate))) / %"
-                    : "n/a (0 local tokens)"
+                    ? "\(formatTokens(Int(cal.sessionBurnRate)))w / %"
+                    : "n/a (no local tokens in period)"
             )
             StatRow(
                 label: "Weekly",
                 value: cal.weeklyBurnRate > 0
-                    ? "\(formatTokens(Int(cal.weeklyBurnRate))) / %"
+                    ? "\(formatTokens(Int(cal.weeklyBurnRate)))w / %"
                     : "n/a"
             )
-            StatRow(
-                label: "Effective",
-                value: "\(formatTokens(Int(cal.effectiveBurnRate))) / %"
-            )
 
-            if cal.sessionBurnRate == 0 && cal.weeklyBurnRate > 0 {
-                Text("Using weekly rate as fallback (no session local tokens)")
-                    .font(.caption2)
-                    .foregroundStyle(.orange)
-            }
+            Text("Weighted: out×1.0 + in×0.25 + cache_create×0.31 + cache_read×0.025")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
 
             HStack {
                 Text("Calibrated: \(cal.calibratedAt.shortDateTimeString)")

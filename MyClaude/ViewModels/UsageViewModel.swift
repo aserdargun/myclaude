@@ -11,9 +11,10 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
     var sessionProgress: Double = 0
     var alertLevel: AlertLevel = .safe
     var currentTokens: Int = 0
+    var currentWeightedTokens: Int = 0
     var currentEventCount: Int = 0
     var weeklyStats: WeeklyStats = WeeklyStats(
-        dailyBreakdown: [], totalTokens: 0, totalEvents: 0, totalSessions: 0
+        dailyBreakdown: [], totalTokens: 0, weightedTokens: 0, totalEvents: 0, totalSessions: 0
     )
     var todayStats: DailyStats = DailyStats(
         date: Date(), totalTokens: 0, eventCount: 0, sessionCount: 0
@@ -65,11 +66,11 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
     }
 
     var estimatedSessionPercent: Double? {
-        calibrationManager.estimatedSessionPercent(currentSessionTokens: currentTokens)
+        calibrationManager.estimatedSessionPercent(currentSessionWeightedTokens: currentWeightedTokens)
     }
 
     var estimatedWeeklyPercent: Double? {
-        calibrationManager.estimatedWeeklyPercent(currentWeeklyTokens: weeklyStats.totalTokens)
+        calibrationManager.estimatedWeeklyPercent(currentWeeklyWeightedTokens: weeklyStats.weightedTokens)
     }
 
     /// Calibrated session progress (0.0-1.0) based on burn rate, or time-based fallback.
@@ -185,7 +186,7 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
     }
 
     /// Query token usage for a specific time range (used by settings period view).
-    func usage(from start: Date, to end: Date) -> (tokens: Int, events: Int) {
+    func usage(from start: Date, to end: Date) -> (tokens: Int, weightedTokens: Int, events: Int) {
         aggregator.usage(from: start, to: end)
     }
 
@@ -215,7 +216,9 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
             weeklyPercentage: weeklyPercentage,
             todayTokens: todayStats.totalTokens,
             weeklyTokens: weeklyStats.totalTokens,
-            sessionTokens: periodUsage.tokens
+            sessionTokens: periodUsage.tokens,
+            sessionWeightedTokens: periodUsage.weightedTokens,
+            weeklyWeightedTokens: weeklyStats.weightedTokens
         )
 
         // Override session engine with the CURRENT period's start, not the first session
@@ -339,9 +342,11 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
                 to: session.windowEnd
             )
             currentTokens = periodUsage.tokens
+            currentWeightedTokens = periodUsage.weightedTokens
             currentEventCount = periodUsage.events
         } else {
             currentTokens = session?.totalTokens ?? 0
+            currentWeightedTokens = session?.totalWeightedTokens ?? 0
             currentEventCount = session?.eventCount ?? 0
         }
 

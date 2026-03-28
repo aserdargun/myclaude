@@ -13,6 +13,9 @@ struct UsageEvent: Codable, Identifiable {
     let id: UUID
     let timestamp: Date
     let tokens: Int?
+    /// Cost-weighted tokens approximating what Claude's rate limiter counts.
+    /// Weights: output=1.0, input=0.25, cache_creation=0.3125, cache_read=0.025
+    let weightedTokens: Int?
     let type: EventType
     let model: String?
     let sessionId: String?
@@ -21,6 +24,7 @@ struct UsageEvent: Codable, Identifiable {
         id: UUID = UUID(),
         timestamp: Date,
         tokens: Int? = nil,
+        weightedTokens: Int? = nil,
         type: EventType,
         model: String? = nil,
         sessionId: String? = nil
@@ -28,6 +32,7 @@ struct UsageEvent: Codable, Identifiable {
         self.id = id
         self.timestamp = timestamp
         self.tokens = tokens
+        self.weightedTokens = weightedTokens
         self.type = type
         self.model = model
         self.sessionId = sessionId
@@ -66,6 +71,10 @@ struct UsageSession: Identifiable {
         events.compactMap(\.tokens).reduce(0, +)
     }
 
+    var totalWeightedTokens: Int {
+        events.compactMap(\.weightedTokens).reduce(0, +)
+    }
+
     var eventCount: Int {
         events.count
     }
@@ -83,6 +92,8 @@ struct DailyStats: Identifiable {
     let id: UUID
     let date: Date
     let totalTokens: Int
+    /// Cost-weighted tokens approximating rate-limiter impact.
+    let weightedTokens: Int
     let eventCount: Int
     let sessionCount: Int
 
@@ -90,12 +101,14 @@ struct DailyStats: Identifiable {
         id: UUID = UUID(),
         date: Date,
         totalTokens: Int,
+        weightedTokens: Int = 0,
         eventCount: Int,
         sessionCount: Int
     ) {
         self.id = id
         self.date = date
         self.totalTokens = totalTokens
+        self.weightedTokens = weightedTokens
         self.eventCount = eventCount
         self.sessionCount = sessionCount
     }
@@ -104,6 +117,7 @@ struct DailyStats: Identifiable {
 struct WeeklyStats {
     let dailyBreakdown: [DailyStats]
     let totalTokens: Int
+    let weightedTokens: Int
     let totalEvents: Int
     let totalSessions: Int
 }

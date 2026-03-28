@@ -49,6 +49,7 @@ final class UsageAggregator {
             dailyBreakdown.append(DailyStats(
                 date: dayStart,
                 totalTokens: dayEvents.compactMap(\.tokens).reduce(0, +),
+                weightedTokens: dayEvents.compactMap(\.weightedTokens).reduce(0, +),
                 eventCount: dayEvents.count,
                 sessionCount: countSessions(in: dayEvents)
             ))
@@ -57,6 +58,7 @@ final class UsageAggregator {
         return WeeklyStats(
             dailyBreakdown: dailyBreakdown,
             totalTokens: weekEvents.compactMap(\.tokens).reduce(0, +),
+            weightedTokens: weekEvents.compactMap(\.weightedTokens).reduce(0, +),
             totalEvents: weekEvents.count,
             totalSessions: dailyBreakdown.map(\.sessionCount).reduce(0, +)
         )
@@ -64,11 +66,12 @@ final class UsageAggregator {
 
     // MARK: - Range query
 
-    /// Returns (tokens, eventCount) for events within a given time range.
-    func usage(from start: Date, to end: Date) -> (tokens: Int, events: Int) {
+    /// Returns (tokens, weightedTokens, eventCount) for events within a given time range.
+    func usage(from start: Date, to end: Date) -> (tokens: Int, weightedTokens: Int, events: Int) {
         let rangeEvents = allEvents.filter { $0.timestamp >= start && $0.timestamp < end }
         let tokens = rangeEvents.compactMap(\.tokens).reduce(0, +)
-        return (tokens, rangeEvents.count)
+        let weighted = rangeEvents.compactMap(\.weightedTokens).reduce(0, +)
+        return (tokens, weighted, rangeEvents.count)
     }
 
     // MARK: - Daily stats
@@ -78,6 +81,7 @@ final class UsageAggregator {
         return DailyStats(
             date: Date().startOfDay,
             totalTokens: todayEvents.compactMap(\.tokens).reduce(0, +),
+            weightedTokens: todayEvents.compactMap(\.weightedTokens).reduce(0, +),
             eventCount: todayEvents.count,
             sessionCount: countSessions(in: todayEvents)
         )

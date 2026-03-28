@@ -1,5 +1,5 @@
 import XCTest
-@testable import ClaudeUsageTracker
+@testable import MyClaude
 
 final class ParserTests: XCTestCase {
 

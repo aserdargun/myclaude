@@ -20,14 +20,14 @@ A lightweight macOS menu bar application that tracks Claude Code CLI usage with 
 
 ### Using Xcode
 
-1. Open `ClaudeUsageTracker/Package.swift` in Xcode
-2. Select the `ClaudeUsageTracker` scheme
+1. Open `MyClaude/Package.swift` in Xcode
+2. Select the `MyClaude` scheme
 3. Build and Run (Cmd+R)
 
 ### Using Command Line
 
 ```bash
-cd ClaudeUsageTracker
+cd MyClaude
 swift build
 swift run
 ```
@@ -35,9 +35,9 @@ swift run
 ### Create .app Bundle
 
 ```bash
-cd ClaudeUsageTracker
+cd MyClaude
 swift build -c release
-# The binary will be at .build/release/ClaudeUsageTracker
+# The binary will be at .build/release/MyClaude
 ```
 
 ## Architecture
@@ -51,7 +51,7 @@ Log File Change → LogReader → Parser → SessionEngine → Aggregator → Vi
 ## Project Structure
 
 ```
-ClaudeUsageTracker/
+MyClaude/
 ├── App/              # App entry point and menu bar controller
 ├── UI/               # SwiftUI views and components
 ├── ViewModels/       # Observable view model

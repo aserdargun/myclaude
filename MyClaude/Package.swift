@@ -3,13 +3,13 @@
 import PackageDescription
 
 let package = Package(
-    name: "ClaudeUsageTracker",
+    name: "MyClaude",
     platforms: [
         .macOS(.v14)
     ],
     targets: [
         .executableTarget(
-            name: "ClaudeUsageTracker",
+            name: "MyClaude",
             path: ".",
             exclude: ["Tests", "Package.swift"],
             swiftSettings: [
@@ -17,8 +17,8 @@ let package = Package(
             ]
         ),
         .testTarget(
-            name: "ClaudeUsageTrackerTests",
-            dependencies: ["ClaudeUsageTracker"],
+            name: "MyClaudeTests",
+            dependencies: ["MyClaude"],
             path: "Tests"
         )
     ]

@@ -29,6 +29,12 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
     var isRefreshing: Bool = false
     var showSettings: Bool = false
 
+    // MARK: - Browser scraping state
+
+    var isScraping: Bool = false
+    var scrapeError: String?
+    var scrapeSuccess: Bool = false
+
     // MARK: - Calibration state
 
     /// Tracks which 5h period was active at last calibration, to detect period changes.
@@ -118,6 +124,7 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
     private let alertEngine: AlertEngine
     private let storage: StorageProtocol
     private let calibrationManager: CalibrationManager
+    private let browserScraper = BrowserScraper()
 
     private var updateTimer: Timer?
 
@@ -222,6 +229,41 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         calibrationManager.reset()
         calibrationPeriodChanged = false
         updateUIState()
+    }
+
+    /// Auto-calibrate by scraping claude.ai/settings from an open browser tab.
+    func scrapeAndCalibrate() {
+        isScraping = true
+        scrapeError = nil
+        scrapeSuccess = false
+
+        Task {
+            do {
+                let data = try await browserScraper.scrape()
+                // Compute session start: now + resetsIn - 5 hours
+                let sessionStart = Date().addingTimeInterval(
+                    data.sessionResetsIn - Constants.sessionDuration
+                )
+                await MainActor.run {
+                    self.performCalibration(
+                        sessionStartTime: sessionStart,
+                        sessionPercentage: data.sessionPercent,
+                        weeklyPercentage: data.weeklyPercent
+                    )
+                    self.isScraping = false
+                    self.scrapeSuccess = true
+                    // Auto-dismiss success after 3 seconds
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                        self.scrapeSuccess = false
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    self.scrapeError = error.localizedDescription
+                    self.isScraping = false
+                }
+            }
+        }
     }
 
     // MARK: - UI Timer

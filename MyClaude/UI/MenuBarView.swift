@@ -19,6 +19,23 @@ struct MenuBarView: View {
                     .font(.headline)
                     .fontWeight(.bold)
                 Spacer()
+
+                Button {
+                    viewModel.scrapeAndCalibrate()
+                } label: {
+                    if viewModel.isScraping {
+                        ProgressView()
+                            .controlSize(.mini)
+                    } else {
+                        Image(systemName: "globe")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .buttonStyle(.borderless)
+                .help("Auto-calibrate from browser")
+                .disabled(viewModel.isScraping)
+
                 Button {
                     viewModel.showSettings = true
                 } label: {
@@ -34,6 +51,42 @@ struct MenuBarView: View {
                     .frame(width: 10, height: 10)
             }
             .padding(.bottom, 4)
+
+            // Browser scrape feedback
+            if let error = viewModel.scrapeError {
+                HStack(spacing: 4) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.caption2)
+                        .foregroundStyle(.red)
+                    Text(error)
+                        .font(.caption2)
+                        .foregroundStyle(.red)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer()
+                    Button {
+                        viewModel.scrapeError = nil
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.caption2)
+                    }
+                    .buttonStyle(.borderless)
+                }
+                .padding(6)
+                .background(RoundedRectangle(cornerRadius: 6).fill(Color.red.opacity(0.1)))
+            }
+
+            if viewModel.scrapeSuccess {
+                HStack(spacing: 4) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.caption2)
+                        .foregroundStyle(.green)
+                    Text("Calibrated from browser!")
+                        .font(.caption2)
+                        .foregroundStyle(.green)
+                }
+                .padding(6)
+                .background(RoundedRectangle(cornerRadius: 6).fill(Color.green.opacity(0.1)))
+            }
 
             // Re-calibration reminder
             if viewModel.needsRecalibration {

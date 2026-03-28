@@ -18,6 +18,8 @@
     <string>14.0</string>
     <key>LSUIElement</key>
     <true/>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>myClaude needs to read your Claude usage percentage from your browser to auto-calibrate.</string>
     <key>NSHumanReadableCopyright</key>
     <string>Copyright 2025. All rights reserved.</string>
 </dict>

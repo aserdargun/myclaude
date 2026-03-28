@@ -56,7 +56,6 @@ struct MenuBarView: View {
                 weeklyStats: viewModel.weeklyStats,
                 todayStats: viewModel.todayStats,
                 todaySessionCount: viewModel.todaySessionCount,
-                estimatedTodayPercent: viewModel.estimatedTodayPercent,
                 estimatedWeeklyPercent: viewModel.estimatedWeeklyPercent
             )
 

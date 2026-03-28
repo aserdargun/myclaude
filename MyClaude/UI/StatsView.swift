@@ -4,7 +4,6 @@ struct StatsView: View {
     let weeklyStats: WeeklyStats
     let todayStats: DailyStats
     let todaySessionCount: Int
-    let estimatedTodayPercent: Double?
     let estimatedWeeklyPercent: Double?
 
     var body: some View {
@@ -12,14 +11,7 @@ struct StatsView: View {
             // Today
             SectionHeader(title: "Today", icon: "calendar")
 
-            HStack {
-                StatRow(label: "Tokens", value: formatTokens(todayStats.totalTokens))
-                if let pct = estimatedTodayPercent {
-                    Text("(\(Int(min(pct, 100)))%)")
-                        .font(.caption2)
-                        .foregroundStyle(.blue)
-                }
-            }
+            StatRow(label: "Tokens", value: formatTokens(todayStats.totalTokens))
             StatRow(label: "Events", value: "\(todayStats.eventCount)")
             StatRow(label: "Sessions", value: "\(todaySessionCount)")
 

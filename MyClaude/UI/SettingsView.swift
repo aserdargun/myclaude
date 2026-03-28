@@ -404,12 +404,6 @@ struct SettingsView: View {
                     value: "\(Int(min(sessionPct, 100)))% used"
                 )
             }
-            if let todayPct = viewModel.estimatedTodayPercent {
-                StatRow(
-                    label: "Today",
-                    value: "\(Int(min(todayPct, 100)))% used"
-                )
-            }
             if let weeklyPct = viewModel.estimatedWeeklyPercent {
                 StatRow(
                     label: "Weekly (All models)",

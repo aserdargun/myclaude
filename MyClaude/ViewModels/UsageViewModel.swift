@@ -62,10 +62,6 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         calibrationManager.estimatedSessionPercent(currentSessionTokens: currentTokens)
     }
 
-    var estimatedTodayPercent: Double? {
-        calibrationManager.estimatedTodayPercent(currentTodayTokens: todayStats.totalTokens)
-    }
-
     var estimatedWeeklyPercent: Double? {
         calibrationManager.estimatedWeeklyPercent(currentWeeklyTokens: weeklyStats.totalTokens)
     }

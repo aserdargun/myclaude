@@ -132,20 +132,4 @@ final class CalibrationManager {
         return cal.weeklyPercentage
     }
 
-    /// Estimate today's contribution as % of session limit using effective burn rate.
-    func estimatedTodayPercent(currentTodayTokens: Int) -> Double? {
-        guard let cal = currentCalibration else { return nil }
-        let burnRate = cal.effectiveBurnRate
-        guard burnRate > 0 else { return nil }
-        let deltaTokens = max(0, currentTodayTokens - cal.todayTokensAtCalibration)
-        if deltaTokens > 0 {
-            // Today doesn't have a separate % in Claude's UI, but we can show
-            // how many % worth of tokens were consumed today using the session burn rate
-            return Double(cal.todayTokensAtCalibration) / burnRate + Double(deltaTokens) / burnRate
-        }
-        if cal.todayTokensAtCalibration > 0 {
-            return Double(cal.todayTokensAtCalibration) / burnRate
-        }
-        return nil
-    }
 }

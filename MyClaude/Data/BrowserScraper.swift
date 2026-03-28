@@ -60,18 +60,17 @@ final class BrowserScraper {
             if (w) result.weekly_pct = parseInt(w[1]);
         }
 
-        // Find "Resets in X hr Y min" for current session
-        var resetMatch = body.match(/Resets in\s+(\d+)\s*hr\s+(\d+)\s*min/i);
-        if (resetMatch) {
-            result.resets_h = parseInt(resetMatch[1]);
-            result.resets_m = parseInt(resetMatch[2]);
-        } else {
-            // Try "Resets in Y min" (less than 1 hour)
-            var minMatch = body.match(/Resets in\s+(\d+)\s*min/i);
-            if (minMatch) {
-                result.resets_h = 0;
-                result.resets_m = parseInt(minMatch[1]);
-            }
+        // Find ALL "Resets in" values on the page.
+        // The page shows session first, then weekly. We need the FIRST match
+        // which is the session's reset time. It can be "X hr Y min" or just "Y min".
+        var resetMatches = body.match(/Resets in\s+(?:(\d+)\s*hr?\s+)?(\d+)\s*min/gi);
+        if (resetMatches && resetMatches.length >= 1) {
+            // Parse the FIRST match (session reset)
+            var first = resetMatches[0];
+            var hrMatch = first.match(/(\d+)\s*hr/i);
+            var minMatch = first.match(/(\d+)\s*min/i);
+            result.resets_h = hrMatch ? parseInt(hrMatch[1]) : 0;
+            result.resets_m = minMatch ? parseInt(minMatch[1]) : 0;
         }
 
         return JSON.stringify(result);

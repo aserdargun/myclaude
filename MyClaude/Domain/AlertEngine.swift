@@ -12,6 +12,7 @@ final class AlertEngine {
 
     private var triggeredAlerts: Set<String> = []
     private var lastAlertLevel: AlertLevel = .safe
+    private var notificationsAvailable = false
 
     // MARK: - Evaluate
 
@@ -73,6 +74,7 @@ final class AlertEngine {
     }
 
     private func sendNotification(_ alert: UsageAlert) {
+        guard notificationsAvailable else { return }
         #if canImport(UserNotifications)
         let content = UNMutableNotificationContent()
         content.title = "myClaude"
@@ -91,13 +93,23 @@ final class AlertEngine {
 
     // MARK: - Setup
 
-    static func requestNotificationPermission() {
+    func requestNotificationPermission() {
+        // UNUserNotificationCenter requires a valid app bundle with a bundle identifier.
+        // SPM command-line builds and Xcode debug runs without a .app wrapper will crash.
+        guard Bundle.main.bundleIdentifier != nil else {
+            print("Notifications unavailable: no bundle identifier")
+            return
+        }
         #if canImport(UserNotifications)
+        notificationsAvailable = true
         UNUserNotificationCenter.current().requestAuthorization(
             options: [.alert, .sound, .badge]
-        ) { granted, error in
+        ) { [weak self] granted, error in
             if let error {
                 print("Notification permission error: \(error)")
+                self?.notificationsAvailable = false
+            } else if !granted {
+                self?.notificationsAvailable = false
             }
         }
         #endif

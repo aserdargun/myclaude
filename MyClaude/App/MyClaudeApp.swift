@@ -1,21 +1,23 @@
 import SwiftUI
 
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    let viewModel = UsageViewModel()
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApplication.shared.setActivationPolicy(.accessory)
+        viewModel.start()
+    }
+}
+
 @main
 struct MyClaudeApp: App {
-    @State private var viewModel: UsageViewModel
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
-        MenuBarExtra(viewModel.menuBarTitle, systemImage: "brain.head.profile") {
-            MenuBarView(viewModel: viewModel)
+        MenuBarExtra(appDelegate.viewModel.menuBarTitle, systemImage: "brain.head.profile") {
+            MenuBarView(viewModel: appDelegate.viewModel)
         }
         .menuBarExtraStyle(.window)
         .defaultSize(width: 280, height: 500)
-    }
-
-    init() {
-        NSApplication.shared.setActivationPolicy(.accessory)
-        let vm = UsageViewModel()
-        _viewModel = State(initialValue: vm)
-        vm.start()
     }
 }

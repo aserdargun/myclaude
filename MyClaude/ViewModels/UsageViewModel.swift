@@ -85,7 +85,7 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
     // MARK: - Lifecycle
 
     func start() {
-        AlertEngine.requestNotificationPermission()
+        alertEngine.requestNotificationPermission()
         logReader.start()
         startUITimer()
     }

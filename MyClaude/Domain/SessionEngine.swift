@@ -35,20 +35,17 @@ final class SessionEngine {
     func processEvent(_ event: UsageEvent) {
         if let session = currentSession {
             if session.isExpired {
-                // Session expired — archive and start new
                 archiveSession(session)
                 startNewSession(with: event)
             } else if event.timestamp.timeIntervalSince(lastEventTimestamp(in: session)) > idleThreshold {
-                // Idle gap detected — could start new session or continue
-                // For now, continue existing session if within window
                 if event.timestamp < session.endTime {
-                    addEvent(event, to: &currentSession!)
+                    appendEvent(event)
                 } else {
                     archiveSession(session)
                     startNewSession(with: event)
                 }
             } else {
-                addEvent(event, to: &currentSession!)
+                appendEvent(event)
             }
         } else {
             startNewSession(with: event)
@@ -111,10 +108,9 @@ final class SessionEngine {
         delegate?.sessionEngine(self, didUpdateSession: session)
     }
 
-    private func addEvent(_ event: UsageEvent, to session: inout UsageSession) {
-        session.events.append(event)
-        currentSession = session
-        delegate?.sessionEngine(self, didUpdateSession: session)
+    private func appendEvent(_ event: UsageEvent) {
+        currentSession?.events.append(event)
+        delegate?.sessionEngine(self, didUpdateSession: currentSession)
     }
 
     private func archiveSession(_ session: UsageSession) {

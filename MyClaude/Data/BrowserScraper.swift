@@ -115,20 +115,23 @@ final class BrowserScraper {
 
     private func scrapeFromChrome() async throws -> ScrapedUsageData {
         // JXA (JavaScript for Automation) script for Chrome
+        // Wrapped in a function — top-level `return` is not valid in JXA.
         let jxa = """
-        var chrome = Application('Google Chrome');
-        var windows = chrome.windows();
-        for (var i = 0; i < windows.length; i++) {
-            var tabs = windows[i].tabs();
-            for (var j = 0; j < tabs.length; j++) {
-                var url = tabs[j].url();
-                if (url && url.indexOf('claude.ai/settings') !== -1) {
-                    var result = tabs[j].execute({javascript: \(scrapeJS.jxaEscaped)});
-                    return result;
+        (function() {
+            var chrome = Application('Google Chrome');
+            var windows = chrome.windows();
+            for (var i = 0; i < windows.length; i++) {
+                var tabs = windows[i].tabs();
+                for (var j = 0; j < tabs.length; j++) {
+                    var url = tabs[j].url();
+                    if (url && url.indexOf('claude.ai/settings') !== -1) {
+                        var result = tabs[j].execute({javascript: \(scrapeJS.jxaEscaped)});
+                        return result;
+                    }
                 }
             }
-        }
-        return '__NO_TAB__';
+            return '__NO_TAB__';
+        })()
         """
         let output = try await runOsascript(language: "JavaScript", script: jxa)
         if output.contains("__NO_TAB__") {
@@ -141,19 +144,21 @@ final class BrowserScraper {
 
     private func scrapeFromSafari() async throws -> ScrapedUsageData {
         let jxa = """
-        var safari = Application('Safari');
-        var windows = safari.windows();
-        for (var i = 0; i < windows.length; i++) {
-            var tabs = windows[i].tabs();
-            for (var j = 0; j < tabs.length; j++) {
-                var url = tabs[j].url();
-                if (url && url.indexOf('claude.ai/settings') !== -1) {
-                    var result = safari.doJavaScript(\(scrapeJS.jxaEscaped), {in: tabs[j]});
-                    return result;
+        (function() {
+            var safari = Application('Safari');
+            var windows = safari.windows();
+            for (var i = 0; i < windows.length; i++) {
+                var tabs = windows[i].tabs();
+                for (var j = 0; j < tabs.length; j++) {
+                    var url = tabs[j].url();
+                    if (url && url.indexOf('claude.ai/settings') !== -1) {
+                        var result = safari.doJavaScript(\(scrapeJS.jxaEscaped), {in: tabs[j]});
+                        return result;
+                    }
                 }
             }
-        }
-        return '__NO_TAB__';
+            return '__NO_TAB__';
+        })()
         """
         let output = try await runOsascript(language: "JavaScript", script: jxa)
         if output.contains("__NO_TAB__") {

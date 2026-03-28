@@ -4,6 +4,14 @@ struct MenuBarView: View {
     let viewModel: UsageViewModel
 
     var body: some View {
+        if viewModel.showSettings {
+            SettingsView(viewModel: viewModel)
+        } else {
+            mainView
+        }
+    }
+
+    private var mainView: some View {
         VStack(alignment: .leading, spacing: 12) {
             // Header
             HStack {
@@ -11,6 +19,16 @@ struct MenuBarView: View {
                     .font(.headline)
                     .fontWeight(.bold)
                 Spacer()
+                Button {
+                    viewModel.showSettings = true
+                } label: {
+                    Image(systemName: "gearshape")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.borderless)
+                .help("Settings & Calibration")
+
                 Circle()
                     .fill(viewModel.statusColor)
                     .frame(width: 10, height: 10)
@@ -33,7 +51,9 @@ struct MenuBarView: View {
             StatsView(
                 weeklyStats: viewModel.weeklyStats,
                 todayStats: viewModel.todayStats,
-                todaySessionCount: viewModel.todaySessionCount
+                todaySessionCount: viewModel.todaySessionCount,
+                estimatedTodayPercent: viewModel.estimatedTodayPercent,
+                estimatedWeeklyPercent: viewModel.estimatedWeeklyPercent
             )
 
             Divider()
@@ -64,13 +84,13 @@ struct MenuBarView: View {
                         .fontWeight(.semibold)
                         .foregroundStyle(viewModel.statusColor)
                     Spacer()
-                    Text("\(Int(viewModel.sessionProgress * 100))%")
+                    Text(viewModel.sessionPercentDisplay)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
 
                 ProgressBarView(
-                    progress: viewModel.sessionProgress,
+                    progress: viewModel.calibratedSessionProgress,
                     color: viewModel.statusColor
                 )
 
@@ -149,6 +169,10 @@ struct MenuBarView: View {
             }
             StatRow(label: "Events parsed", value: "\(viewModel.totalEventsRead)")
             StatRow(label: "Sessions detected", value: "\(viewModel.todaySessionCount)")
+
+            if viewModel.calibrationData != nil {
+                StatRow(label: "Calibration", value: "Active")
+            }
         }
     }
 

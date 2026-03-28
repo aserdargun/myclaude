@@ -28,11 +28,21 @@ final class SessionEngine {
     /// product. When they resume Code, we treat it as a new session.
     private let sessionGapThreshold: TimeInterval = 60 * 60 // 1 hour
 
+    /// When set, overrides gap-based detection and uses this as the session start.
+    private var calibratedSessionStart: Date?
+
     init(sessionDuration: TimeInterval = Constants.sessionDuration) {
         self.sessionDuration = sessionDuration
     }
 
     // MARK: - Public API
+
+    /// Override session start time from calibration (user entered from Claude settings).
+    func overrideSessionStart(_ start: Date) {
+        calibratedSessionStart = start
+        updateCurrentSession()
+        delegate?.sessionEngine(self, didUpdateSession: currentSession)
+    }
 
     func processEvents(_ events: [UsageEvent]) {
         var addedNew = false
@@ -110,6 +120,26 @@ final class SessionEngine {
     /// "Resets in" = windowEnd − now.
     private func updateCurrentSession() {
         let now = Date()
+
+        // If user provided a calibrated session start, use it
+        if let calibratedStart = calibratedSessionStart {
+            let calibratedEnd = calibratedStart.addingTimeInterval(sessionDuration)
+            if now < calibratedEnd {
+                // Calibrated session is still active — use it
+                let sessionEvents = allEvents.filter {
+                    $0.timestamp >= calibratedStart && $0.timestamp <= now
+                }.sorted { $0.timestamp < $1.timestamp }
+                currentSession = UsageSession(
+                    windowStart: calibratedStart,
+                    events: sessionEvents
+                )
+                return
+            } else {
+                // Calibrated session expired — clear override, fall through to gap detection
+                calibratedSessionStart = nil
+            }
+        }
+
         let cutoff = now.addingTimeInterval(-sessionDuration)
         let recentEvents = allEvents
             .filter { $0.timestamp >= cutoff && $0.timestamp <= now }

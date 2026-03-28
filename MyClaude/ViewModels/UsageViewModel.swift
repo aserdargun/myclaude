@@ -27,6 +27,41 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
     var hasSession: Bool = false
     var todaySessionCount: Int = 0
     var isRefreshing: Bool = false
+    var showSettings: Bool = false
+
+    // MARK: - Calibration state
+
+    var calibrationData: CalibrationData? {
+        calibrationManager.currentCalibration
+    }
+
+    var estimatedSessionPercent: Double? {
+        calibrationManager.estimatedSessionPercent(currentSessionTokens: currentTokens)
+    }
+
+    var estimatedTodayPercent: Double? {
+        calibrationManager.estimatedTodayPercent(currentTodayTokens: todayStats.totalTokens)
+    }
+
+    var estimatedWeeklyPercent: Double? {
+        calibrationManager.estimatedWeeklyPercent(currentWeeklyTokens: weeklyStats.totalTokens)
+    }
+
+    /// Calibrated session progress (0.0-1.0) based on burn rate, or time-based fallback.
+    var calibratedSessionProgress: Double {
+        if let pct = estimatedSessionPercent {
+            return min(1.0, pct / 100.0)
+        }
+        return sessionProgress
+    }
+
+    /// Display string for session percentage.
+    var sessionPercentDisplay: String {
+        if let pct = estimatedSessionPercent {
+            return "\(Int(min(pct, 100)))%"
+        }
+        return "\(Int(sessionProgress * 100))%"
+    }
 
     // MARK: - Status bar display
 
@@ -63,6 +98,7 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
     private let aggregator: UsageAggregator
     private let alertEngine: AlertEngine
     private let storage: StorageProtocol
+    private let calibrationManager: CalibrationManager
 
     private var updateTimer: Timer?
 
@@ -80,6 +116,7 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         self.aggregator = aggregator
         self.alertEngine = alertEngine
         self.storage = storage
+        self.calibrationManager = CalibrationManager(storage: storage)
         super.init()
 
         logReader.delegate = self
@@ -104,6 +141,32 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
     func forceRefresh() {
         isRefreshing = true
         logReader.forceRefresh()
+    }
+
+    // MARK: - Calibration
+
+    func performCalibration(
+        sessionStartTime: Date,
+        sessionPercentage: Double,
+        weeklyPercentage: Double
+    ) {
+        let _ = calibrationManager.calibrate(
+            sessionStartTime: sessionStartTime,
+            sessionPercentage: sessionPercentage,
+            weeklyPercentage: weeklyPercentage,
+            todayTokens: todayStats.totalTokens,
+            weeklyTokens: weeklyStats.totalTokens,
+            sessionTokens: currentTokens
+        )
+
+        // Update session engine with calibrated start time
+        sessionEngine.overrideSessionStart(sessionStartTime)
+        updateUIState()
+    }
+
+    func resetCalibration() {
+        calibrationManager.reset()
+        updateUIState()
     }
 
     // MARK: - UI Timer

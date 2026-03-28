@@ -70,7 +70,7 @@ struct MenuBarView: View {
             actionsSection
         }
         .padding(12)
-        .frame(width: 280)
+        .frame(width: 340)
     }
 
     // MARK: - Session Section

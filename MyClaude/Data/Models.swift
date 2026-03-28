@@ -59,7 +59,7 @@ struct UsageSession: Identifiable {
     }
 
     var isActive: Bool {
-        !isExpired && !events.isEmpty
+        !isExpired
     }
 
     var totalTokens: Int {

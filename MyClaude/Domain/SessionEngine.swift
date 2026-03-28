@@ -121,22 +121,28 @@ final class SessionEngine {
     private func updateCurrentSession() {
         let now = Date()
 
-        // If user provided a calibrated session start, use it
+        // If user provided a calibrated session start, use continuous 5h periods.
+        // With Pro/Max subscription there's always an active period — when one
+        // expires, the next one starts immediately.
         if let calibratedStart = calibratedSessionStart {
-            let calibratedEnd = calibratedStart.addingTimeInterval(sessionDuration)
-            if now < calibratedEnd {
-                // Calibrated session is still active — use it
+            // Step forward through 5h periods to find the one containing "now"
+            var periodStart = calibratedStart
+            while periodStart.addingTimeInterval(sessionDuration) <= now {
+                periodStart = periodStart.addingTimeInterval(sessionDuration)
+            }
+            // Update stored start so we don't re-walk every tick
+            calibratedSessionStart = periodStart
+
+            let periodEnd = periodStart.addingTimeInterval(sessionDuration)
+            if now < periodEnd {
                 let sessionEvents = allEvents.filter {
-                    $0.timestamp >= calibratedStart && $0.timestamp <= now
+                    $0.timestamp >= periodStart && $0.timestamp <= now
                 }.sorted { $0.timestamp < $1.timestamp }
                 currentSession = UsageSession(
-                    windowStart: calibratedStart,
+                    windowStart: periodStart,
                     events: sessionEvents
                 )
                 return
-            } else {
-                // Calibrated session expired — clear override, fall through to gap detection
-                calibratedSessionStart = nil
             }
         }
 

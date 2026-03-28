@@ -105,7 +105,9 @@ final class UsageViewModel: LogReaderDelegate, SessionEngineDelegate, AlertEngin
             withTimeInterval: Constants.uiUpdateInterval,
             repeats: true
         ) { [weak self] _ in
-            self?.tick()
+            MainActor.assumeIsolated {
+                self?.tick()
+            }
         }
     }
 

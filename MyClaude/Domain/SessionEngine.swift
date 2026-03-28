@@ -105,7 +105,7 @@ final class SessionEngine {
     // MARK: - Private
 
     private func startNewSession(with event: UsageEvent) {
-        var session = UsageSession(startTime: event.timestamp, events: [event])
+        let session = UsageSession(startTime: event.timestamp, events: [event])
         currentSession = session
         delegate?.sessionEngine(self, didStartNewSession: session)
         delegate?.sessionEngine(self, didUpdateSession: session)

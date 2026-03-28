@@ -3,6 +3,7 @@ import SwiftUI
 
 /// Alternative NSStatusBar-based controller for more control over menu bar behavior.
 /// This can be used instead of MenuBarExtra if more customization is needed.
+@MainActor
 final class MenuBarController: NSObject {
     private var statusItem: NSStatusItem?
     private var popover: NSPopover?
@@ -32,8 +33,10 @@ final class MenuBarController: NSObject {
 
         // Timer to update button title
         Timer.scheduledTimer(withTimeInterval: Constants.uiUpdateInterval, repeats: true) { [weak self] _ in
-            guard let self else { return }
-            self.statusItem?.button?.title = self.viewModel.menuBarTitle
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.statusItem?.button?.title = self.viewModel.menuBarTitle
+            }
         }
     }
 

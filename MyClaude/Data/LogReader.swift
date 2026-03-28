@@ -5,7 +5,7 @@ protocol LogReaderDelegate: AnyObject {
     func logReader(_ reader: LogReader, didEncounterError error: Error)
 }
 
-final class LogReader {
+final class LogReader: @unchecked Sendable {
     weak var delegate: LogReaderDelegate?
 
     private let parser: ParserProtocol

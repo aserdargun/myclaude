@@ -126,11 +126,11 @@ struct SettingsView: View {
         return result
     }
 
-    /// Estimated % for a period using the calibrated burn rate.
+    /// Estimated % for a period using the effective burn rate.
     private func estimatedPercent(tokens: Int) -> Double? {
         guard let cal = viewModel.calibrationData,
-              cal.sessionBurnRatePerPercent > 0 else { return nil }
-        return Double(tokens) / cal.sessionBurnRatePerPercent
+              cal.effectiveBurnRate > 0 else { return nil }
+        return Double(tokens) / cal.effectiveBurnRate
     }
 
     // MARK: - Calibration Input
@@ -359,20 +359,30 @@ struct SettingsView: View {
 
     private func burnRatesSection(_ cal: CalibrationData) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            SectionHeader(title: "Burn Rates", icon: "flame")
+            SectionHeader(title: "Burn Rates (tokens per 1%)", icon: "flame")
 
             StatRow(
                 label: "Session",
-                value: "\(formatTokens(Int(cal.sessionBurnRatePerPercent))) / %"
-            )
-            StatRow(
-                label: "Today",
-                value: "\(formatTokens(Int(cal.todayBurnRatePerPercent))) / %"
+                value: cal.sessionBurnRate > 0
+                    ? "\(formatTokens(Int(cal.sessionBurnRate))) / %"
+                    : "n/a (0 local tokens)"
             )
             StatRow(
                 label: "Weekly",
-                value: "\(formatTokens(Int(cal.weeklyBurnRatePerPercent))) / %"
+                value: cal.weeklyBurnRate > 0
+                    ? "\(formatTokens(Int(cal.weeklyBurnRate))) / %"
+                    : "n/a"
             )
+            StatRow(
+                label: "Effective",
+                value: "\(formatTokens(Int(cal.effectiveBurnRate))) / %"
+            )
+
+            if cal.sessionBurnRate == 0 && cal.weeklyBurnRate > 0 {
+                Text("Using weekly rate as fallback (no session local tokens)")
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
+            }
 
             HStack {
                 Text("Calibrated: \(cal.calibratedAt.shortDateTimeString)")

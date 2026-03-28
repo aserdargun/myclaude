@@ -12,8 +12,16 @@ let package = Package(
             name: "MyClaude",
             path: ".",
             exclude: ["Tests", "Package.swift"],
-            swiftSettings: [
-                .enableExperimentalFeature("StrictConcurrency")
+            resources: [
+                .copy("Info.plist")
+            ],
+            linkerSettings: [
+                .unsafeFlags([
+                    "-Xlinker", "-sectcreate",
+                    "-Xlinker", "__TEXT",
+                    "-Xlinker", "__info_plist",
+                    "-Xlinker", "Info.plist"
+                ])
             ]
         ),
         .testTarget(

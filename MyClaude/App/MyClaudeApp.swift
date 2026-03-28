@@ -14,7 +14,6 @@ struct MyClaudeApp: App {
     }
 
     init() {
-        // Ensure app runs as accessory (no dock icon)
         NSApplication.shared.setActivationPolicy(.accessory)
     }
 }

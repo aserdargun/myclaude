@@ -36,24 +36,21 @@ final class UsageAggregator {
             $0.timestamp >= weekRange.start && $0.timestamp < weekRange.end
         }
 
-        // Group existing events by day
-        var dayGroups: [Date: [UsageEvent]] = [:]
-        for event in weekEvents {
-            let day = calendar.startOfDay(for: event.timestamp)
-            dayGroups[day, default: []].append(event)
-        }
-
-        // Build all 7 days (Sun through Sat), including days with no events
+        // Build all 7 days (Sun through Sat), filtering events per day by range
         var dailyBreakdown: [DailyStats] = []
         for dayOffset in 0..<7 {
             guard let dayDate = calendar.date(byAdding: .day, value: dayOffset, to: weekRange.start) else { continue }
             let dayStart = calendar.startOfDay(for: dayDate)
-            let events = dayGroups[dayStart] ?? []
+            guard let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) else { continue }
+
+            let dayEvents = weekEvents.filter {
+                $0.timestamp >= dayStart && $0.timestamp < dayEnd
+            }
             dailyBreakdown.append(DailyStats(
                 date: dayStart,
-                totalTokens: events.compactMap(\.tokens).reduce(0, +),
-                eventCount: events.count,
-                sessionCount: countSessions(in: events)
+                totalTokens: dayEvents.compactMap(\.tokens).reduce(0, +),
+                eventCount: dayEvents.count,
+                sessionCount: countSessions(in: dayEvents)
             ))
         }
 

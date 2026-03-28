@@ -14,7 +14,7 @@ struct MyClaudeApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
-        MenuBarExtra(appDelegate.viewModel.menuBarTitle, systemImage: "brain.head.profile") {
+        MenuBarExtra(appDelegate.viewModel.menuBarTitle) {
             MenuBarView(viewModel: appDelegate.viewModel)
         }
         .menuBarExtraStyle(.window)

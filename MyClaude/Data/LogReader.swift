@@ -20,8 +20,8 @@ final class LogReader: @unchecked Sendable {
     private(set) var isScanning: Bool = false
 
     /// Max bytes to read from a file on first encounter (tail read).
-    /// 512 KB covers ~5 hours of typical Claude Code conversation.
-    private let maxInitialReadBytes: UInt64 = 512 * 1024
+    /// 10 MB covers heavy usage sessions with many tokens.
+    private let maxInitialReadBytes: UInt64 = 10 * 1024 * 1024
 
     init(parser: ParserProtocol = MyClaudeLogParser()) {
         self.parser = parser

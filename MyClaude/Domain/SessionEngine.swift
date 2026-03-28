@@ -13,6 +13,12 @@ final class SessionEngine {
     /// All detected session windows (including current).
     private(set) var allSessions: [UsageSession] = []
 
+    /// All events ever received, used to rebuild windows.
+    private var allEvents: [UsageEvent] = []
+
+    /// Deduplication: track event IDs we've already seen.
+    private var seenEventIDs: Set<String> = []
+
     private let sessionDuration: TimeInterval
 
     init(sessionDuration: TimeInterval = Constants.sessionDuration) {
@@ -22,10 +28,22 @@ final class SessionEngine {
     // MARK: - Public API
 
     func processEvents(_ events: [UsageEvent]) {
-        let sorted = events.sorted { $0.timestamp < $1.timestamp }
-        for event in sorted {
-            processEvent(event)
+        // Deduplicate and accumulate
+        var addedNew = false
+        for event in events {
+            let key = "\(event.timestamp.timeIntervalSince1970)-\(event.tokens ?? 0)"
+            if seenEventIDs.insert(key).inserted {
+                allEvents.append(event)
+                addedNew = true
+            }
         }
+
+        guard addedNew else {
+            delegate?.sessionEngine(self, didUpdateSession: currentSession)
+            return
+        }
+
+        rebuildSessions()
         delegate?.sessionEngine(self, didUpdateSession: currentSession)
     }
 
@@ -75,39 +93,37 @@ final class SessionEngine {
         return allSessions.filter { $0.windowStart >= startOfDay }.count
     }
 
-    // MARK: - Private
+    // MARK: - Rebuild
 
-    private func processEvent(_ event: UsageEvent) {
-        if let session = currentSession {
-            if event.timestamp >= session.windowEnd {
-                // Event falls after current window — archive and start new
-                finishSession()
-                startNewWindow(with: event)
-            } else if event.timestamp >= session.windowStart {
-                // Event falls within current window
-                currentSession?.events.append(event)
+    /// Rebuilds all session windows from scratch using all accumulated events.
+    /// This ensures correct windows regardless of the order files/events arrive.
+    private func rebuildSessions() {
+        let sorted = allEvents.sorted { $0.timestamp < $1.timestamp }
+
+        var sessions: [UsageSession] = []
+        var current: UsageSession?
+
+        for event in sorted {
+            if let sess = current {
+                if event.timestamp >= sess.windowEnd {
+                    // Event falls after current window — finalize and start new
+                    sessions.append(sess)
+                    current = UsageSession(windowStart: event.timestamp, events: [event])
+                } else if event.timestamp >= sess.windowStart {
+                    // Event falls within current window
+                    current?.events.append(event)
+                }
+                // Events before windowStart belong to a previous window — already handled
+            } else {
+                current = UsageSession(windowStart: event.timestamp, events: [event])
             }
-            // Events before windowStart are from a previous window — ignore
-        } else {
-            startNewWindow(with: event)
         }
-    }
 
-    private func startNewWindow(with event: UsageEvent) {
-        let session = UsageSession(
-            windowStart: event.timestamp,
-            events: [event]
-        )
-        currentSession = session
-        allSessions.append(session)
-    }
-
-    private func finishSession() {
-        // The session is already in allSessions (added in startNewWindow),
-        // but update it with final event list
-        if let session = currentSession, let idx = allSessions.lastIndex(where: { $0.id == session.id }) {
-            allSessions[idx] = session
+        if let sess = current {
+            sessions.append(sess)
         }
-        currentSession = nil
+
+        allSessions = sessions
+        currentSession = sessions.last
     }
 }

@@ -144,72 +144,64 @@ struct SettingsView: View {
                 .foregroundStyle(.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
 
-            // Session start date
+            // Session start date + time on same row
             VStack(alignment: .leading, spacing: 4) {
-                Text("First Session Start Date")
+                Text("First Session Start")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                DatePicker(
-                    "",
-                    selection: $sessionStartDate,
-                    displayedComponents: [.date]
-                )
-                .datePickerStyle(.field)
-                .labelsHidden()
-                .font(.caption)
-            }
+                HStack(spacing: 6) {
+                    DatePicker(
+                        "",
+                        selection: $sessionStartDate,
+                        displayedComponents: [.date]
+                    )
+                    .datePickerStyle(.field)
+                    .labelsHidden()
+                    .font(.caption)
 
-            // Session start time
-            VStack(alignment: .leading, spacing: 4) {
-                Text("First Session Start Time")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                HStack(spacing: 4) {
                     TextField("HH", value: $sessionStartHour, format: .number.precision(.integerLength(2)))
                         .textFieldStyle(.roundedBorder)
-                        .frame(width: 44)
+                        .frame(width: 32)
                         .font(.caption)
                     Text(":")
                         .font(.caption)
                     TextField("MM", value: $sessionStartMinute, format: .number.precision(.integerLength(2)))
                         .textFieldStyle(.roundedBorder)
-                        .frame(width: 44)
+                        .frame(width: 32)
                         .font(.caption)
-                    Text("(24h format)")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
                 }
             }
 
-            // Current session %
+            // Percentages on same row
             VStack(alignment: .leading, spacing: 4) {
-                Text("Current Session Used %")
+                Text("Usage Percentages")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                HStack(spacing: 4) {
-                    TextField("e.g. 23", text: $sessionPercentText)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 60)
-                        .font(.caption)
-                    Text("%")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            // Weekly all models %
-            VStack(alignment: .leading, spacing: 4) {
-                Text("All Models Weekly Used %")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                HStack(spacing: 4) {
-                    TextField("e.g. 54", text: $weeklyPercentText)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 60)
-                        .font(.caption)
-                    Text("%")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                HStack(spacing: 12) {
+                    HStack(spacing: 4) {
+                        Text("Session")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                        TextField("41", text: $sessionPercentText)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 44)
+                            .font(.caption)
+                        Text("%")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    HStack(spacing: 4) {
+                        Text("Weekly")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                        TextField("55", text: $weeklyPercentText)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 44)
+                            .font(.caption)
+                        Text("%")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
 

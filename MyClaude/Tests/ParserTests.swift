@@ -3,11 +3,11 @@ import XCTest
 
 final class ParserTests: XCTestCase {
 
-    var parser: ClaudeLogParser!
+    var parser: MyClaudeLogParser!
 
     override func setUp() {
         super.setUp()
-        parser = ClaudeLogParser()
+        parser = MyClaudeLogParser()
     }
 
     // MARK: - JSON parsing

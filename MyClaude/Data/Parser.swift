@@ -5,7 +5,7 @@ protocol ParserProtocol {
     func parseLine(_ line: String) -> UsageEvent?
 }
 
-final class ClaudeLogParser: ParserProtocol {
+final class MyClaudeLogParser: ParserProtocol {
 
     private let decoder: JSONDecoder = {
         let d = JSONDecoder()

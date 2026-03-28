@@ -17,7 +17,7 @@ final class LogReader {
     private(set) var lastReadTime: Date?
     private(set) var totalEventsRead: Int = 0
 
-    init(parser: ParserProtocol = ClaudeLogParser()) {
+    init(parser: ParserProtocol = MyClaudeLogParser()) {
         self.parser = parser
     }
 

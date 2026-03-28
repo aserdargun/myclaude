@@ -143,6 +143,11 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         logReader.forceRefresh()
     }
 
+    /// Query token usage for a specific time range (used by settings period view).
+    func usage(from start: Date, to end: Date) -> (tokens: Int, events: Int) {
+        aggregator.usage(from: start, to: end)
+    }
+
     // MARK: - Calibration
 
     func performCalibration(

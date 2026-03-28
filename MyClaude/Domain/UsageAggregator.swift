@@ -65,6 +65,15 @@ final class UsageAggregator {
         )
     }
 
+    // MARK: - Range query
+
+    /// Returns (tokens, eventCount) for events within a given time range.
+    func usage(from start: Date, to end: Date) -> (tokens: Int, events: Int) {
+        let rangeEvents = allEvents.filter { $0.timestamp >= start && $0.timestamp < end }
+        let tokens = rangeEvents.compactMap(\.tokens).reduce(0, +)
+        return (tokens, rangeEvents.count)
+    }
+
     // MARK: - Daily stats
 
     func todayStats() -> DailyStats {

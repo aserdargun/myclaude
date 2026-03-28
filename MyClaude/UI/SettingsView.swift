@@ -1,5 +1,24 @@
 import SwiftUI
 
+/// A single 5-hour period in the chain from the input start to now.
+private struct SessionPeriod: Identifiable {
+    let id: Int // period index (0-based)
+    let start: Date
+    let end: Date
+    let tokens: Int
+    let events: Int
+    let isCurrent: Bool // contains "now"
+
+    var isExpired: Bool { Date() >= end }
+
+    var remaining: TimeInterval { max(0, end.timeIntervalSince(Date())) }
+
+    var elapsed: Double {
+        let e = Date().timeIntervalSince(start)
+        return min(1.0, max(0, e / Constants.sessionDuration))
+    }
+}
+
 struct SettingsView: View {
     let viewModel: UsageViewModel
 
@@ -32,19 +51,19 @@ struct SettingsView: View {
 
             Divider()
 
-            ScrollView(.vertical, showsIndicators: false) {
+            ScrollView(.vertical, showsIndicators: true) {
                 VStack(alignment: .leading, spacing: 12) {
-                    // Calibration Section
+                    // Calibration inputs
                     calibrationInputSection
 
                     Divider()
 
-                    // 5h session progression preview
-                    sessionProgressionPreview
+                    // 5h period chain
+                    periodChainSection
 
                     Divider()
 
-                    // Current burn rates (if calibrated)
+                    // Burn rates (if calibrated)
                     if let cal = viewModel.calibrationData {
                         burnRatesSection(cal)
                         Divider()
@@ -55,10 +74,11 @@ struct SettingsView: View {
                         estimatesSection
                     }
                 }
+                .padding(.bottom, 8)
             }
         }
         .padding(12)
-        .frame(width: 300)
+        .frame(width: 340, height: 600)
         .onAppear {
             prefillFromCurrentState()
         }
@@ -76,25 +96,41 @@ struct SettingsView: View {
         return calendar.date(from: components)
     }
 
-    private var inputSessionEnd: Date? {
-        inputSessionStart?.addingTimeInterval(Constants.sessionDuration)
+    /// Build all 5h periods from the input start forward until now.
+    private var periods: [SessionPeriod] {
+        guard let firstStart = inputSessionStart else { return [] }
+        let now = Date()
+        guard firstStart <= now else { return [] }
+
+        var result: [SessionPeriod] = []
+        var periodStart = firstStart
+        var index = 0
+
+        while periodStart < now {
+            let periodEnd = periodStart.addingTimeInterval(Constants.sessionDuration)
+            let isCurrent = now >= periodStart && now < periodEnd
+            let usage = viewModel.usage(from: periodStart, to: periodEnd)
+
+            result.append(SessionPeriod(
+                id: index,
+                start: periodStart,
+                end: periodEnd,
+                tokens: usage.tokens,
+                events: usage.events,
+                isCurrent: isCurrent
+            ))
+
+            periodStart = periodEnd
+            index += 1
+        }
+        return result
     }
 
-    /// How far into the 5h window we are right now (0.0 – 1.0).
-    private var sessionElapsedProgress: Double {
-        guard let start = inputSessionStart else { return 0 }
-        let elapsed = Date().timeIntervalSince(start)
-        return min(1.0, max(0, elapsed / Constants.sessionDuration))
-    }
-
-    /// Time remaining in the 5h window.
-    private var sessionTimeRemaining: TimeInterval {
-        guard let end = inputSessionEnd else { return 0 }
-        return max(0, end.timeIntervalSince(Date()))
-    }
-
-    private var isSessionExpired: Bool {
-        sessionTimeRemaining <= 0
+    /// Estimated % for a period using the calibrated burn rate.
+    private func estimatedPercent(tokens: Int) -> Double? {
+        guard let cal = viewModel.calibrationData,
+              cal.sessionBurnRatePerPercent > 0 else { return nil }
+        return Double(tokens) / cal.sessionBurnRatePerPercent
     }
 
     // MARK: - Calibration Input
@@ -103,14 +139,14 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 10) {
             SectionHeader(title: "Calibrate from Claude", icon: "slider.horizontal.3")
 
-            Text("Enter values from Claude's usage settings page to calibrate burn rates.")
+            Text("Enter values from Claude's usage settings page.")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
 
             // Session start date
             VStack(alignment: .leading, spacing: 4) {
-                Text("Session Start Date")
+                Text("First Session Start Date")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 DatePicker(
@@ -125,7 +161,7 @@ struct SettingsView: View {
 
             // Session start time
             VStack(alignment: .leading, spacing: 4) {
-                Text("Session Start Time")
+                Text("First Session Start Time")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 HStack(spacing: 4) {
@@ -158,9 +194,6 @@ struct SettingsView: View {
                     Text("%")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Text("(from \"Current session\")")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
                 }
             }
 
@@ -177,9 +210,6 @@ struct SettingsView: View {
                     Text("%")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Text("(from \"All models\")")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
                 }
             }
 
@@ -228,64 +258,96 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - 5h Session Progression Preview
+    // MARK: - 5h Period Chain
 
-    private var sessionProgressionPreview: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            SectionHeader(title: "5h Session Window", icon: "timer")
+    private var periodChainSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            SectionHeader(title: "5h Session Periods", icon: "timer")
 
-            if let start = inputSessionStart, let end = inputSessionEnd {
-                // Progress bar
-                ProgressBarView(
-                    progress: sessionElapsedProgress,
-                    color: isSessionExpired ? .gray : progressColor
-                )
-
-                // Time labels
-                HStack {
-                    Text(start.shortTimeString)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    if isSessionExpired {
-                        Text("Expired")
-                            .font(.caption2)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(.gray)
-                    } else {
-                        Text("\(sessionTimeRemaining.compactRemaining) left")
-                            .font(.caption2)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(progressColor)
-                    }
-                    Spacer()
-                    Text(end.shortTimeString)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-
-                // Percentage
-                HStack {
-                    Text("Time elapsed: \(Int(sessionElapsedProgress * 100))%")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                    Spacer()
-                    Text(start.shortDateString)
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                }
-            } else {
-                Text("Enter a valid date and time above")
+            let allPeriods = periods
+            if allPeriods.isEmpty {
+                Text("Enter a valid date and time above to see session periods.")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
+            } else {
+                Text("\(allPeriods.count) period\(allPeriods.count == 1 ? "" : "s") from \(allPeriods.first!.start.shortDateTimeString)")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+
+                ForEach(allPeriods) { period in
+                    periodRow(period)
+                }
             }
         }
     }
 
-    private var progressColor: Color {
-        if sessionTimeRemaining <= Constants.thirtyMinWarning {
+    private func periodRow(_ period: SessionPeriod) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            // Header: period number + time range
+            HStack {
+                Text("#\(period.id + 1)")
+                    .font(.caption2)
+                    .fontWeight(.bold)
+                    .foregroundStyle(period.isCurrent ? .primary : .secondary)
+                    .frame(width: 22, alignment: .leading)
+
+                Text("\(period.start.shortTimeString) – \(period.end.shortTimeString)")
+                    .font(.caption2)
+                    .foregroundStyle(period.isCurrent ? .primary : .secondary)
+
+                Spacer()
+
+                if period.isCurrent {
+                    Text(period.remaining.compactRemaining)
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(periodColor(period))
+                } else {
+                    Text("Expired")
+                        .font(.caption2)
+                        .foregroundStyle(.gray)
+                }
+            }
+
+            // Progress bar
+            ProgressBarView(
+                progress: period.isCurrent ? period.elapsed : 1.0,
+                color: period.isCurrent ? periodColor(period) : .gray.opacity(0.5)
+            )
+            .frame(height: 6)
+
+            // Tokens + estimated %
+            HStack {
+                Text(formatTokens(period.tokens))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+
+                if let pct = estimatedPercent(tokens: period.tokens) {
+                    Text("(\(Int(min(pct, 999)))% used)")
+                        .font(.caption2)
+                        .foregroundStyle(period.isCurrent ? .blue : .secondary)
+                }
+
+                Spacer()
+
+                Text("\(period.events) events")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .padding(.vertical, 2)
+        .padding(.horizontal, 4)
+        .background(
+            period.isCurrent
+                ? RoundedRectangle(cornerRadius: 4).fill(Color.blue.opacity(0.08))
+                : RoundedRectangle(cornerRadius: 4).fill(Color.clear)
+        )
+    }
+
+    private func periodColor(_ period: SessionPeriod) -> Color {
+        if period.remaining <= Constants.thirtyMinWarning {
             return .red
-        } else if sessionTimeRemaining <= Constants.oneHourWarning {
+        } else if period.remaining <= Constants.oneHourWarning {
             return .yellow
         }
         return .green
@@ -374,7 +436,6 @@ struct SettingsView: View {
     }
 
     private func prefillFromCurrentState() {
-        // Pre-fill from existing calibration first
         if let cal = viewModel.calibrationData {
             sessionPercentText = "\(Int(cal.sessionPercentage))"
             weeklyPercentText = "\(Int(cal.weeklyPercentage))"
@@ -383,7 +444,6 @@ struct SettingsView: View {
             sessionStartHour = calendar.component(.hour, from: cal.sessionStartTime)
             sessionStartMinute = calendar.component(.minute, from: cal.sessionStartTime)
         } else if let start = viewModel.windowStartTime {
-            // Pre-fill session start from current detected session
             sessionStartDate = start
             let calendar = Calendar.current
             sessionStartHour = calendar.component(.hour, from: start)

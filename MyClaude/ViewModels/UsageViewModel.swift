@@ -21,7 +21,8 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
     var lastLogRead: Date?
     var totalEventsRead: Int = 0
     var latestAlert: UsageAlert?
-    var oldestWindowEvent: Date?
+    var windowStartTime: Date?
+    var windowEndTime: Date?
     var isSessionActive: Bool = false
     var isRefreshing: Bool = false
 
@@ -119,7 +120,9 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
     private func tick() {
         sessionEngine.tick()
         updateUIState()
-        alertEngine.evaluate(session: sessionEngine.currentSession, sessionEngine: sessionEngine)
+        if let session = sessionEngine.currentSession {
+            alertEngine.evaluate(session: session, sessionEngine: sessionEngine)
+        }
         if isRefreshing && !logReader.isScanning {
             isRefreshing = false
         }
@@ -130,9 +133,10 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         sessionProgress = sessionEngine.sessionProgress
         alertLevel = sessionEngine.currentAlertLevel
         isSessionActive = sessionEngine.isActive
-        oldestWindowEvent = sessionEngine.currentSession.oldestWindowEvent?.timestamp
-        currentTokens = sessionEngine.currentSession.totalTokens
-        currentEventCount = sessionEngine.currentSession.eventCount
+        windowStartTime = sessionEngine.currentSession?.windowStart
+        windowEndTime = sessionEngine.currentSession?.windowEnd
+        currentTokens = sessionEngine.currentSession?.totalTokens ?? 0
+        currentEventCount = sessionEngine.currentSession?.eventCount ?? 0
         weeklyStats = aggregator.weeklyStats()
         todayStats = aggregator.todayStats()
         lastLogRead = logReader.lastReadTime

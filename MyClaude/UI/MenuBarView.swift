@@ -53,7 +53,7 @@ struct MenuBarView: View {
 
     private var sessionSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            SectionHeader(title: "Rolling Window (5h)", icon: "clock")
+            SectionHeader(title: "Current Session", icon: "clock")
 
             if viewModel.isSessionActive {
                 HStack {
@@ -72,13 +72,18 @@ struct MenuBarView: View {
                     color: viewModel.statusColor
                 )
 
-                if let oldest = viewModel.oldestWindowEvent {
-                    Text("Oldest usage: \(oldest.shortTimeString)")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                if let start = viewModel.windowStartTime,
+                   let end = viewModel.windowEndTime {
+                    HStack {
+                        Text("Started: \(start.shortTimeString)")
+                        Spacer()
+                        Text("Ends: \(end.shortTimeString)")
+                    }
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
                 }
             } else {
-                Text("No usage in last 5 hours")
+                Text("No active session")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                 Text("Start using Claude to begin tracking")

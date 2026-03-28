@@ -7,7 +7,11 @@ protocol SessionEngineDelegate: AnyObject {
 final class SessionEngine {
     weak var delegate: SessionEngineDelegate?
 
-    private(set) var currentSession = UsageSession()
+    /// The current active session window, if any.
+    private(set) var currentSession: UsageSession?
+
+    /// Past expired sessions for history tracking.
+    private(set) var sessionHistory: [UsageSession] = []
 
     private let sessionDuration: TimeInterval
 
@@ -18,35 +22,37 @@ final class SessionEngine {
     // MARK: - Public API
 
     func processEvents(_ events: [UsageEvent]) {
-        currentSession.events.append(contentsOf: events)
-        // Sort and deduplicate by id
-        currentSession.events.sort { $0.timestamp < $1.timestamp }
-        pruneOldEvents()
+        // Sort all events chronologically and assign them to windows
+        let sorted = events.sorted { $0.timestamp < $1.timestamp }
+        for event in sorted {
+            processEvent(event)
+        }
         delegate?.sessionEngine(self, didUpdateSession: currentSession)
     }
 
-    /// Called periodically to prune events that have fallen out of the window.
+    /// Called periodically to check if the current window has expired.
     func tick() {
-        pruneOldEvents()
+        guard let session = currentSession, session.isExpired else { return }
+        sessionHistory.append(session)
+        currentSession = nil
+        delegate?.sessionEngine(self, didUpdateSession: nil)
     }
 
     // MARK: - Computed properties
 
-    /// Time until the oldest event in the rolling window ages out.
     var remainingTime: TimeInterval {
-        currentSession.remainingTime
+        currentSession?.remainingTime ?? 0
     }
 
-    /// Fraction of the 5-hour window that has elapsed since the oldest event.
-    /// This represents how "full" the window is time-wise.
+    /// How much of the 5-hour window has elapsed (0.0 to 1.0).
     var sessionProgress: Double {
-        guard let oldest = currentSession.oldestWindowEvent else { return 0 }
-        let windowAge = Date().timeIntervalSince(oldest.timestamp)
-        return min(1.0, windowAge / sessionDuration)
+        guard let session = currentSession, !session.isExpired else { return 0 }
+        let elapsed = Date().timeIntervalSince(session.windowStart)
+        return min(1.0, elapsed / sessionDuration)
     }
 
     var isActive: Bool {
-        currentSession.isActive
+        currentSession?.isActive ?? false
     }
 
     var currentAlertLevel: AlertLevel {
@@ -63,9 +69,26 @@ final class SessionEngine {
 
     // MARK: - Private
 
-    /// Remove events older than the rolling window to keep memory bounded.
-    private func pruneOldEvents() {
-        let cutoff = Date().addingTimeInterval(-sessionDuration)
-        currentSession.events.removeAll { $0.timestamp <= cutoff }
+    private func processEvent(_ event: UsageEvent) {
+        if let session = currentSession {
+            if event.timestamp >= session.windowEnd {
+                // This event falls after the current window — archive and start new
+                sessionHistory.append(session)
+                startNewWindow(with: event)
+            } else if event.timestamp >= session.windowStart {
+                // Event falls within current window
+                currentSession?.events.append(event)
+            }
+            // Events before windowStart are from a previous window — ignore
+        } else {
+            startNewWindow(with: event)
+        }
+    }
+
+    private func startNewWindow(with event: UsageEvent) {
+        currentSession = UsageSession(
+            windowStart: event.timestamp,
+            events: [event]
+        )
     }
 }

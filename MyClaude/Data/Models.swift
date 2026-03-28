@@ -34,49 +34,45 @@ struct UsageEvent: Codable, Identifiable {
     }
 }
 
-// MARK: - Rolling Window Session
+// MARK: - Fixed Window Session
 //
-// Claude uses a rolling 5-hour window: at any moment, your usage =
-// sum of all activity in the past 5 hours. "Resets in X" means the
-// oldest event in the window will age out in X time.
+// Claude uses fixed 5-hour windows: a window starts when you first make
+// a request after the previous window expired. All usage within that
+// window counts toward your limit. "Resets in X" = time until the
+// entire window expires and usage resets to 0.
 
 struct UsageSession: Identifiable {
     let id: UUID
+    let windowStart: Date
     var events: [UsageEvent]
 
-    /// Events that fall within the current 5-hour rolling window.
-    var windowEvents: [UsageEvent] {
-        let cutoff = Date().addingTimeInterval(-Constants.sessionDuration)
-        return events.filter { $0.timestamp > cutoff }
+    var windowEnd: Date {
+        windowStart.addingTimeInterval(Constants.sessionDuration)
     }
 
-    /// The oldest event still inside the rolling window.
-    var oldestWindowEvent: UsageEvent? {
-        windowEvents.min(by: { $0.timestamp < $1.timestamp })
+    var isExpired: Bool {
+        Date() >= windowEnd
     }
 
-    /// Time until the oldest event in the window ages out (= "resets in").
     var remainingTime: TimeInterval {
-        guard let oldest = oldestWindowEvent else { return 0 }
-        let expiresAt = oldest.timestamp.addingTimeInterval(Constants.sessionDuration)
-        return max(0, expiresAt.timeIntervalSince(Date()))
+        max(0, windowEnd.timeIntervalSince(Date()))
     }
 
-    /// Whether there are any events in the current rolling window.
     var isActive: Bool {
-        !windowEvents.isEmpty
+        !isExpired && !events.isEmpty
     }
 
     var totalTokens: Int {
-        windowEvents.compactMap(\.tokens).reduce(0, +)
+        events.compactMap(\.tokens).reduce(0, +)
     }
 
     var eventCount: Int {
-        windowEvents.count
+        events.count
     }
 
-    init(id: UUID = UUID(), events: [UsageEvent] = []) {
+    init(id: UUID = UUID(), windowStart: Date, events: [UsageEvent] = []) {
         self.id = id
+        self.windowStart = windowStart
         self.events = events
     }
 }

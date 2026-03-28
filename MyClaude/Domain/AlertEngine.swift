@@ -29,13 +29,13 @@ final class AlertEngine {
             triggerAlertIfNeeded(
                 key: "30min",
                 level: .critical,
-                message: "Only \(Int(remaining / 60)) minutes until oldest usage expires!"
+                message: "Only \(Int(remaining / 60)) minutes until session resets!"
             )
         } else if remaining <= Constants.oneHourWarning && remaining > Constants.thirtyMinWarning {
             triggerAlertIfNeeded(
                 key: "1hr",
                 level: .warning,
-                message: "1 hour until oldest usage expires"
+                message: "1 hour until session resets"
             )
         }
 
@@ -44,13 +44,13 @@ final class AlertEngine {
             triggerAlertIfNeeded(
                 key: "95pct",
                 level: .critical,
-                message: "95% of rolling window consumed!"
+                message: "95% of session time consumed!"
             )
         } else if progress >= Constants.warningThreshold {
             triggerAlertIfNeeded(
                 key: "80pct",
                 level: .warning,
-                message: "80% of rolling window consumed"
+                message: "80% of session time consumed"
             )
         }
     }

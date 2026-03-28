@@ -17,13 +17,11 @@ enum Constants {
     static let oneHourWarning: TimeInterval = 60 * 60
     static let thirtyMinWarning: TimeInterval = 30 * 60
 
-    // Log paths
+    // Log paths — focus on projects directory where JSONL conversation logs live
     static var claudeLogPaths: [String] {
         let home = FileManager.default.homeDirectoryForCurrentUser.path
         return [
-            "\(home)/.claude/projects",
-            "\(home)/.claude",
-            "\(home)/.config/claude"
+            "\(home)/.claude/projects"
         ]
     }
 

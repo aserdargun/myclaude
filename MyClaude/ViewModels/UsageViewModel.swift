@@ -31,8 +31,31 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
 
     // MARK: - Calibration state
 
+    /// Tracks which 5h period was active at last calibration, to detect period changes.
+    private var lastCalibratedPeriodStart: Date?
+
+    /// Set to true when the 5h period has changed since last calibration.
+    var calibrationPeriodChanged: Bool = false
+
     var calibrationData: CalibrationData? {
         calibrationManager.currentCalibration
+    }
+
+    /// How long ago the user last calibrated.
+    var calibrationAge: TimeInterval? {
+        guard let cal = calibrationManager.currentCalibration else { return nil }
+        return Date().timeIntervalSince(cal.calibratedAt)
+    }
+
+    /// Whether calibration is stale (>1 hour old).
+    var isCalibrationStale: Bool {
+        guard let age = calibrationAge else { return false }
+        return age > Constants.recalibrationInterval
+    }
+
+    /// Whether calibration needs attention (stale or period changed).
+    var needsRecalibration: Bool {
+        isCalibrationStale || calibrationPeriodChanged
     }
 
     var estimatedSessionPercent: Double? {
@@ -194,11 +217,14 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
 
         // Override session engine with the CURRENT period's start, not the first session
         sessionEngine.overrideSessionStart(periodStart)
+        calibrationPeriodChanged = false
+        alertEngine.resetAlerts()
         updateUIState()
     }
 
     func resetCalibration() {
         calibrationManager.reset()
+        calibrationPeriodChanged = false
         updateUIState()
     }
 
@@ -220,9 +246,38 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
 
     private func tick() {
         sessionEngine.tick()
+        checkPeriodChange()
         updateUIState()
         if let session = sessionEngine.currentSession, session.isActive {
             alertEngine.evaluate(session: session, sessionEngine: sessionEngine)
+        }
+    }
+
+    /// Detects when the 5h period has changed since last calibration.
+    private func checkPeriodChange() {
+        guard let cal = calibrationManager.currentCalibration else {
+            calibrationPeriodChanged = false
+            return
+        }
+
+        // Compute current period start
+        let now = Date()
+        var periodStart = cal.sessionStartTime
+        while periodStart.addingTimeInterval(Constants.sessionDuration) <= now {
+            periodStart = periodStart.addingTimeInterval(Constants.sessionDuration)
+        }
+
+        // Compute period that was active at calibration time
+        var calPeriodStart = cal.sessionStartTime
+        while calPeriodStart.addingTimeInterval(Constants.sessionDuration) <= cal.calibratedAt {
+            calPeriodStart = calPeriodStart.addingTimeInterval(Constants.sessionDuration)
+        }
+
+        // If period changed, flag it
+        if periodStart != calPeriodStart && !calibrationPeriodChanged {
+            calibrationPeriodChanged = true
+            // Send notification
+            alertEngine.sendRecalibrationReminder(reason: "New 5h period started")
         }
     }
 

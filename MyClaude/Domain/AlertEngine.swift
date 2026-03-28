@@ -61,6 +61,19 @@ final class AlertEngine {
         lastAlertLevel = .safe
     }
 
+    /// Sends a macOS notification reminding the user to re-calibrate.
+    func sendRecalibrationReminder(reason: String) {
+        guard !triggeredAlerts.contains("recalibrate") else { return }
+        triggeredAlerts.insert("recalibrate")
+
+        let alert = UsageAlert(
+            level: .warning,
+            message: "Re-calibrate myClaude: \(reason). Open Claude settings and update your usage %."
+        )
+        delegate?.alertEngine(self, didTriggerAlert: alert)
+        sendNotification(alert)
+    }
+
     // MARK: - Private
 
     private func triggerAlertIfNeeded(key: String, level: AlertLevel, message: String) {

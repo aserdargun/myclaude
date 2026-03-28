@@ -17,6 +17,9 @@ enum Constants {
     static let oneHourWarning: TimeInterval = 60 * 60
     static let thirtyMinWarning: TimeInterval = 30 * 60
 
+    // Calibration
+    static let recalibrationInterval: TimeInterval = 60 * 60 // 1 hour
+
     // Log paths — focus on projects directory where JSONL conversation logs live
     static var claudeLogPaths: [String] {
         let home = FileManager.default.homeDirectoryForCurrentUser.path

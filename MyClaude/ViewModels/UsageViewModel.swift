@@ -21,8 +21,7 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
     var lastLogRead: Date?
     var totalEventsRead: Int = 0
     var latestAlert: UsageAlert?
-    var sessionStartTime: Date?
-    var sessionEndTime: Date?
+    var oldestWindowEvent: Date?
     var isSessionActive: Bool = false
     var isRefreshing: Bool = false
 
@@ -118,7 +117,7 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
     }
 
     private func tick() {
-        sessionEngine.checkExpiration()
+        sessionEngine.tick()
         updateUIState()
         alertEngine.evaluate(session: sessionEngine.currentSession, sessionEngine: sessionEngine)
         if isRefreshing && !logReader.isScanning {
@@ -131,10 +130,9 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         sessionProgress = sessionEngine.sessionProgress
         alertLevel = sessionEngine.currentAlertLevel
         isSessionActive = sessionEngine.isActive
-        sessionStartTime = sessionEngine.currentSession?.startTime
-        sessionEndTime = sessionEngine.currentSession?.endTime
-        currentTokens = aggregator.currentSessionUsage(session: sessionEngine.currentSession)
-        currentEventCount = aggregator.currentSessionEventCount(session: sessionEngine.currentSession)
+        oldestWindowEvent = sessionEngine.currentSession.oldestWindowEvent?.timestamp
+        currentTokens = sessionEngine.currentSession.totalTokens
+        currentEventCount = sessionEngine.currentSession.eventCount
         weeklyStats = aggregator.weeklyStats()
         todayStats = aggregator.todayStats()
         lastLogRead = logReader.lastReadTime
@@ -157,15 +155,6 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
     // MARK: - SessionEngineDelegate
 
     func sessionEngine(_ engine: SessionEngine, didUpdateSession session: UsageSession?) {
-        updateUIState()
-    }
-
-    func sessionEngine(_ engine: SessionEngine, didStartNewSession session: UsageSession) {
-        alertEngine.resetAlerts()
-        updateUIState()
-    }
-
-    func sessionEngine(_ engine: SessionEngine, sessionDidExpire session: UsageSession) {
         updateUIState()
     }
 

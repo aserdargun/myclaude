@@ -2,95 +2,57 @@ import Foundation
 
 protocol SessionEngineDelegate: AnyObject {
     func sessionEngine(_ engine: SessionEngine, didUpdateSession session: UsageSession?)
-    func sessionEngine(_ engine: SessionEngine, didStartNewSession session: UsageSession)
-    func sessionEngine(_ engine: SessionEngine, sessionDidExpire session: UsageSession)
 }
 
 final class SessionEngine {
     weak var delegate: SessionEngineDelegate?
 
-    private(set) var currentSession: UsageSession?
-    private(set) var sessionHistory: [UsageSession] = []
+    private(set) var currentSession = UsageSession()
 
     private let sessionDuration: TimeInterval
-    private let idleThreshold: TimeInterval
 
-    init(
-        sessionDuration: TimeInterval = Constants.sessionDuration,
-        idleThreshold: TimeInterval = Constants.idleThreshold
-    ) {
+    init(sessionDuration: TimeInterval = Constants.sessionDuration) {
         self.sessionDuration = sessionDuration
-        self.idleThreshold = idleThreshold
     }
 
     // MARK: - Public API
 
     func processEvents(_ events: [UsageEvent]) {
-        let sorted = events.sorted { $0.timestamp < $1.timestamp }
-        for event in sorted {
-            processEvent(event)
-        }
+        currentSession.events.append(contentsOf: events)
+        // Sort and deduplicate by id
+        currentSession.events.sort { $0.timestamp < $1.timestamp }
+        pruneOldEvents()
+        delegate?.sessionEngine(self, didUpdateSession: currentSession)
     }
 
-    func processEvent(_ event: UsageEvent) {
-        if let session = currentSession {
-            if session.isExpired {
-                archiveSession(session)
-                startNewSession(with: event)
-            } else if event.timestamp.timeIntervalSince(lastEventTimestamp(in: session)) > idleThreshold {
-                if event.timestamp < session.endTime {
-                    appendEvent(event)
-                } else {
-                    archiveSession(session)
-                    startNewSession(with: event)
-                }
-            } else {
-                appendEvent(event)
-            }
-        } else {
-            startNewSession(with: event)
-        }
-    }
-
-    func checkExpiration() {
-        guard let session = currentSession, session.isExpired else { return }
-        delegate?.sessionEngine(self, sessionDidExpire: session)
-        archiveSession(session)
-        currentSession = nil
-    }
-
-    /// Reconstruct session state from historical events (e.g., after app restart)
-    func reconstruct(from events: [UsageEvent]) {
-        currentSession = nil
-        sessionHistory.removeAll()
-
-        let sorted = events.sorted { $0.timestamp < $1.timestamp }
-        for event in sorted {
-            processEvent(event)
-        }
+    /// Called periodically to prune events that have fallen out of the window.
+    func tick() {
+        pruneOldEvents()
     }
 
     // MARK: - Computed properties
 
+    /// Time until the oldest event in the rolling window ages out.
     var remainingTime: TimeInterval {
-        currentSession?.remainingTime ?? 0
+        currentSession.remainingTime
     }
 
+    /// Fraction of the 5-hour window that has elapsed since the oldest event.
+    /// This represents how "full" the window is time-wise.
     var sessionProgress: Double {
-        guard let session = currentSession else { return 0 }
-        let elapsed = Date().timeIntervalSince(session.startTime)
-        return min(1.0, elapsed / sessionDuration)
+        guard let oldest = currentSession.oldestWindowEvent else { return 0 }
+        let windowAge = Date().timeIntervalSince(oldest.timestamp)
+        return min(1.0, windowAge / sessionDuration)
     }
 
     var isActive: Bool {
-        currentSession != nil && !(currentSession?.isExpired ?? true)
+        currentSession.isActive
     }
 
     var currentAlertLevel: AlertLevel {
-        guard let session = currentSession else { return .safe }
-        if session.isExpired { return .expired }
+        guard isActive else { return .safe }
 
-        let remaining = session.remainingTime
+        let remaining = remainingTime
         if remaining <= Constants.thirtyMinWarning {
             return .critical
         } else if remaining <= Constants.oneHourWarning {
@@ -101,24 +63,9 @@ final class SessionEngine {
 
     // MARK: - Private
 
-    private func startNewSession(with event: UsageEvent) {
-        let session = UsageSession(startTime: event.timestamp, events: [event])
-        currentSession = session
-        delegate?.sessionEngine(self, didStartNewSession: session)
-        delegate?.sessionEngine(self, didUpdateSession: session)
-    }
-
-    private func appendEvent(_ event: UsageEvent) {
-        currentSession?.events.append(event)
-        delegate?.sessionEngine(self, didUpdateSession: currentSession)
-    }
-
-    private func archiveSession(_ session: UsageSession) {
-        sessionHistory.append(session)
-        delegate?.sessionEngine(self, sessionDidExpire: session)
-    }
-
-    private func lastEventTimestamp(in session: UsageSession) -> Date {
-        session.events.last?.timestamp ?? session.startTime
+    /// Remove events older than the rolling window to keep memory bounded.
+    private func pruneOldEvents() {
+        let cutoff = Date().addingTimeInterval(-sessionDuration)
+        currentSession.events.removeAll { $0.timestamp <= cutoff }
     }
 }

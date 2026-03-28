@@ -15,8 +15,8 @@ final class AlertEngine {
 
     // MARK: - Evaluate
 
-    func evaluate(session: UsageSession?, sessionEngine: SessionEngine) {
-        guard let session else {
+    func evaluate(session: UsageSession, sessionEngine: SessionEngine) {
+        guard session.isActive else {
             resetAlerts()
             return
         }
@@ -27,39 +27,30 @@ final class AlertEngine {
         // Time-based alerts
         if remaining <= Constants.thirtyMinWarning && remaining > 0 {
             triggerAlertIfNeeded(
-                key: "30min_\(session.id)",
+                key: "30min",
                 level: .critical,
-                message: "Only \(Int(remaining / 60)) minutes remaining in session!"
+                message: "Only \(Int(remaining / 60)) minutes until oldest usage expires!"
             )
         } else if remaining <= Constants.oneHourWarning && remaining > Constants.thirtyMinWarning {
             triggerAlertIfNeeded(
-                key: "1hr_\(session.id)",
+                key: "1hr",
                 level: .warning,
-                message: "1 hour remaining in session"
+                message: "1 hour until oldest usage expires"
             )
         }
 
-        // Usage-based alerts
+        // Usage-based alerts (progress = how much of the 5h window is "filled")
         if progress >= Constants.criticalThreshold {
             triggerAlertIfNeeded(
-                key: "95pct_\(session.id)",
+                key: "95pct",
                 level: .critical,
-                message: "95% of session time consumed!"
+                message: "95% of rolling window consumed!"
             )
         } else if progress >= Constants.warningThreshold {
             triggerAlertIfNeeded(
-                key: "80pct_\(session.id)",
+                key: "80pct",
                 level: .warning,
-                message: "80% of session time consumed"
-            )
-        }
-
-        // Session expired
-        if session.isExpired {
-            triggerAlertIfNeeded(
-                key: "expired_\(session.id)",
-                level: .expired,
-                message: "Session has expired. New activity will start a new session."
+                message: "80% of rolling window consumed"
             )
         }
     }

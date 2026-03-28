@@ -34,36 +34,49 @@ struct UsageEvent: Codable, Identifiable {
     }
 }
 
-// MARK: - Session
+// MARK: - Rolling Window Session
+//
+// Claude uses a rolling 5-hour window: at any moment, your usage =
+// sum of all activity in the past 5 hours. "Resets in X" means the
+// oldest event in the window will age out in X time.
 
 struct UsageSession: Identifiable {
     let id: UUID
-    let startTime: Date
     var events: [UsageEvent]
 
-    var endTime: Date {
-        startTime.addingTimeInterval(Constants.sessionDuration)
+    /// Events that fall within the current 5-hour rolling window.
+    var windowEvents: [UsageEvent] {
+        let cutoff = Date().addingTimeInterval(-Constants.sessionDuration)
+        return events.filter { $0.timestamp > cutoff }
     }
 
-    var isExpired: Bool {
-        Date() >= endTime
+    /// The oldest event still inside the rolling window.
+    var oldestWindowEvent: UsageEvent? {
+        windowEvents.min(by: { $0.timestamp < $1.timestamp })
     }
 
+    /// Time until the oldest event in the window ages out (= "resets in").
     var remainingTime: TimeInterval {
-        max(0, endTime.timeIntervalSince(Date()))
+        guard let oldest = oldestWindowEvent else { return 0 }
+        let expiresAt = oldest.timestamp.addingTimeInterval(Constants.sessionDuration)
+        return max(0, expiresAt.timeIntervalSince(Date()))
+    }
+
+    /// Whether there are any events in the current rolling window.
+    var isActive: Bool {
+        !windowEvents.isEmpty
     }
 
     var totalTokens: Int {
-        events.compactMap(\.tokens).reduce(0, +)
+        windowEvents.compactMap(\.tokens).reduce(0, +)
     }
 
     var eventCount: Int {
-        events.count
+        windowEvents.count
     }
 
-    init(id: UUID = UUID(), startTime: Date, events: [UsageEvent] = []) {
+    init(id: UUID = UUID(), events: [UsageEvent] = []) {
         self.id = id
-        self.startTime = startTime
         self.events = events
     }
 }

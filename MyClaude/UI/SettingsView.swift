@@ -314,7 +314,7 @@ struct SettingsView: View {
 
             // Tokens + estimated %
             HStack {
-                Text("\(formatTokens(period.weightedTokens))w")
+                Text(formatTokens(period.weightedTokens))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
 
@@ -358,13 +358,13 @@ struct SettingsView: View {
             StatRow(
                 label: "Session",
                 value: cal.sessionBurnRate > 0
-                    ? "\(formatTokens(Int(cal.sessionBurnRate)))w / %"
+                    ? "\(formatTokens(Int(cal.sessionBurnRate))) / %"
                     : "n/a (no local tokens in period)"
             )
             StatRow(
                 label: "Weekly",
                 value: cal.weeklyBurnRate > 0
-                    ? "\(formatTokens(Int(cal.weeklyBurnRate)))w / %"
+                    ? "\(formatTokens(Int(cal.weeklyBurnRate))) / %"
                     : "n/a"
             )
 

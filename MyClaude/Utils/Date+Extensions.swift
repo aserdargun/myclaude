@@ -36,6 +36,12 @@ extension Date {
         formatter.dateFormat = "EEE"
         return formatter.string(from: self)
     }
+
+    var shortDateTimeString: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d, HH:mm"
+        return formatter.string(from: self)
+    }
 }
 
 extension TimeInterval {

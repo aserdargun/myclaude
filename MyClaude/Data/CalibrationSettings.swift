@@ -95,25 +95,37 @@ final class CalibrationManager {
         storage.remove(forKey: Self.storageKey)
     }
 
-    /// Estimate current session % using burn rate + current tokens.
+    /// Estimate current session % using calibrated base + delta tokens.
+    /// Uses calibrated percentage as floor, adds increase from new local tokens.
     func estimatedSessionPercent(currentSessionTokens: Int) -> Double? {
-        guard let cal = currentCalibration,
-              cal.sessionBurnRatePerPercent > 0 else { return nil }
-        return Double(currentSessionTokens) / cal.sessionBurnRatePerPercent
+        guard let cal = currentCalibration else { return nil }
+        let deltaTokens = max(0, currentSessionTokens - cal.sessionTokensAtCalibration)
+        if cal.sessionBurnRatePerPercent > 0 && deltaTokens > 0 {
+            return cal.sessionPercentage + Double(deltaTokens) / cal.sessionBurnRatePerPercent
+        }
+        return cal.sessionPercentage
     }
 
-    /// Estimate current weekly % using burn rate + current tokens.
+    /// Estimate current weekly % using calibrated base + delta tokens.
     func estimatedWeeklyPercent(currentWeeklyTokens: Int) -> Double? {
         guard let cal = currentCalibration,
-              cal.weeklyBurnRatePerPercent > 0,
               cal.isCurrentWeek else { return nil }
-        return Double(currentWeeklyTokens) / cal.weeklyBurnRatePerPercent
+        let deltaTokens = max(0, currentWeeklyTokens - cal.weeklyTokensAtCalibration)
+        if cal.weeklyBurnRatePerPercent > 0 && deltaTokens > 0 {
+            return cal.weeklyPercentage + Double(deltaTokens) / cal.weeklyBurnRatePerPercent
+        }
+        return cal.weeklyPercentage
     }
 
-    /// Estimate today's % using today burn rate + current tokens.
+    /// Estimate today's % using calibrated base + delta tokens.
     func estimatedTodayPercent(currentTodayTokens: Int) -> Double? {
         guard let cal = currentCalibration,
               cal.todayBurnRatePerPercent > 0 else { return nil }
-        return Double(currentTodayTokens) / cal.todayBurnRatePerPercent
+        let deltaTokens = max(0, currentTodayTokens - cal.todayTokensAtCalibration)
+        if deltaTokens > 0 {
+            return cal.sessionPercentage + Double(deltaTokens) / cal.todayBurnRatePerPercent
+        }
+        // No today baseline % stored, so return nil if no delta
+        return nil
     }
 }

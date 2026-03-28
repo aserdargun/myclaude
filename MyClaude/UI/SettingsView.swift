@@ -165,15 +165,15 @@ struct SettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 HStack(spacing: 4) {
-                    TextField("HH", value: $sessionStartHour, format: .number)
+                    TextField("HH", value: $sessionStartHour, format: .number.precision(.integerLength(2)))
                         .textFieldStyle(.roundedBorder)
-                        .frame(width: 40)
+                        .frame(width: 44)
                         .font(.caption)
                     Text(":")
                         .font(.caption)
-                    TextField("MM", value: $sessionStartMinute, format: .number)
+                    TextField("MM", value: $sessionStartMinute, format: .number.precision(.integerLength(2)))
                         .textFieldStyle(.roundedBorder)
-                        .frame(width: 40)
+                        .frame(width: 44)
                         .font(.caption)
                     Text("(24h format)")
                         .font(.caption2)
@@ -262,7 +262,7 @@ struct SettingsView: View {
 
     private var periodChainSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            SectionHeader(title: "5h Session Periods", icon: "timer")
+            SectionHeader(title: "Current Session Period", icon: "timer")
 
             let allPeriods = periods
             if allPeriods.isEmpty {
@@ -270,12 +270,14 @@ struct SettingsView: View {
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
             } else {
-                Text("\(allPeriods.count) period\(allPeriods.count == 1 ? "" : "s") from \(allPeriods.first!.start.shortDateTimeString)")
+                // Show period count summary
+                Text("\(allPeriods.count) period\(allPeriods.count == 1 ? "" : "s") since \(allPeriods.first!.start.shortDateTimeString)")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
 
-                ForEach(allPeriods) { period in
-                    periodRow(period)
+                // Only show the last (current/most recent) period
+                if let lastPeriod = allPeriods.last {
+                    periodRow(lastPeriod)
                 }
             }
         }

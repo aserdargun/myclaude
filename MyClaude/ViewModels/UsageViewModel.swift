@@ -3,7 +3,7 @@ import Combine
 import SwiftUI
 
 @Observable
-final class UsageViewModel: LogReaderDelegate, SessionEngineDelegate, AlertEngineDelegate {
+final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, AlertEngineDelegate {
 
     // MARK: - Published state
 
@@ -74,6 +74,7 @@ final class UsageViewModel: LogReaderDelegate, SessionEngineDelegate, AlertEngin
         self.aggregator = aggregator
         self.alertEngine = alertEngine
         self.storage = storage
+        super.init()
 
         logReader.delegate = self
         sessionEngine.delegate = self
@@ -102,13 +103,16 @@ final class UsageViewModel: LogReaderDelegate, SessionEngineDelegate, AlertEngin
 
     private func startUITimer() {
         updateTimer = Timer.scheduledTimer(
-            withTimeInterval: Constants.uiUpdateInterval,
+            timeInterval: Constants.uiUpdateInterval,
+            target: self,
+            selector: #selector(timerFired),
+            userInfo: nil,
             repeats: true
-        ) { [weak self] _ in
-            MainActor.assumeIsolated {
-                self?.tick()
-            }
-        }
+        )
+    }
+
+    @objc private func timerFired() {
+        tick()
     }
 
     private func tick() {

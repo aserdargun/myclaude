@@ -235,8 +235,23 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         hasSession = sessionEngine.hasSession
         windowStartTime = session?.windowStart
         windowEndTime = session?.windowEnd
-        currentTokens = session?.totalTokens ?? 0
-        currentEventCount = session?.eventCount ?? 0
+
+        // For session tokens/events: when calibrated, query the aggregator
+        // using the current period range. The session engine's events may be
+        // empty if the calibrated grid doesn't align with Code CLI activity,
+        // but the aggregator has ALL events and can filter by range.
+        if let session, calibrationManager.currentCalibration != nil {
+            let periodUsage = aggregator.usage(
+                from: session.windowStart,
+                to: session.windowEnd
+            )
+            currentTokens = periodUsage.tokens
+            currentEventCount = periodUsage.events
+        } else {
+            currentTokens = session?.totalTokens ?? 0
+            currentEventCount = session?.eventCount ?? 0
+        }
+
         todaySessionCount = sessionEngine.todaySessionCount
         weeklyStats = aggregator.weeklyStats()
         todayStats = aggregator.todayStats()

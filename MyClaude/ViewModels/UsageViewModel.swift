@@ -128,8 +128,23 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
 
     func start() {
         alertEngine.requestNotificationPermission()
+        restoreCalibration()
         logReader.start()
         startUITimer()
+    }
+
+    /// Restore calibrated session override from persisted calibration data.
+    private func restoreCalibration() {
+        guard let cal = calibrationManager.currentCalibration else { return }
+        let now = Date()
+        var periodStart = cal.sessionStartTime
+        while periodStart.addingTimeInterval(Constants.sessionDuration) <= now {
+            periodStart = periodStart.addingTimeInterval(Constants.sessionDuration)
+        }
+        // Only restore if the current period is still active
+        if now < periodStart.addingTimeInterval(Constants.sessionDuration) {
+            sessionEngine.overrideSessionStart(periodStart)
+        }
     }
 
     func stop() {
@@ -155,17 +170,30 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         sessionPercentage: Double,
         weeklyPercentage: Double
     ) {
+        // Find the current active 5h period by stepping forward from the first session start
+        let now = Date()
+        var periodStart = sessionStartTime
+        while periodStart.addingTimeInterval(Constants.sessionDuration) <= now {
+            periodStart = periodStart.addingTimeInterval(Constants.sessionDuration)
+        }
+        // periodStart is now the start of the current active period
+
+        let periodUsage = aggregator.usage(
+            from: periodStart,
+            to: periodStart.addingTimeInterval(Constants.sessionDuration)
+        )
+
         let _ = calibrationManager.calibrate(
             sessionStartTime: sessionStartTime,
             sessionPercentage: sessionPercentage,
             weeklyPercentage: weeklyPercentage,
             todayTokens: todayStats.totalTokens,
             weeklyTokens: weeklyStats.totalTokens,
-            sessionTokens: currentTokens
+            sessionTokens: periodUsage.tokens
         )
 
-        // Update session engine with calibrated start time
-        sessionEngine.overrideSessionStart(sessionStartTime)
+        // Override session engine with the CURRENT period's start, not the first session
+        sessionEngine.overrideSessionStart(periodStart)
         updateUIState()
     }
 

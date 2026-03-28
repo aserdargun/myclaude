@@ -26,10 +26,10 @@ final class UsageAggregator {
         return session.eventCount
     }
 
-    // MARK: - Weekly stats (Sunday to Saturday)
+    // MARK: - Weekly stats (Monday to Sunday)
 
     func weeklyStats() -> WeeklyStats {
-        let calendar = calendar_sundayStart
+        let calendar = calendar_mondayStart
         let weekRange = currentWeekRange(calendar: calendar)
 
         let weekEvents = allEvents.filter {
@@ -85,21 +85,22 @@ final class UsageAggregator {
 
     // MARK: - Private
 
-    /// Calendar configured with Sunday as first day of week.
-    private var calendar_sundayStart: Calendar {
+    /// Calendar configured with Monday as first day of week.
+    private var calendar_mondayStart: Calendar {
         var cal = Calendar.current
-        cal.firstWeekday = 1 // Sunday
+        cal.firstWeekday = 2 // Monday
         return cal
     }
 
-    /// Returns the date range for the current week (Sunday 00:00 to next Sunday 00:00).
+    /// Returns the date range for the current week (Monday 00:00 to next Monday 00:00).
     private func currentWeekRange(calendar: Calendar) -> (start: Date, end: Date) {
         let today = calendar.startOfDay(for: Date())
-        let weekday = calendar.component(.weekday, from: today) // 1=Sun, 7=Sat
-        let daysSinceSunday = weekday - 1
-        let sunday = calendar.date(byAdding: .day, value: -daysSinceSunday, to: today)!
-        let nextSunday = calendar.date(byAdding: .day, value: 7, to: sunday)!
-        return (sunday, nextSunday)
+        let weekday = calendar.component(.weekday, from: today) // 1=Sun, 2=Mon, ..., 7=Sat
+        // Days since Monday: Mon=0, Tue=1, ..., Sun=6
+        let daysSinceMonday = (weekday + 5) % 7
+        let monday = calendar.date(byAdding: .day, value: -daysSinceMonday, to: today)!
+        let nextMonday = calendar.date(byAdding: .day, value: 7, to: monday)!
+        return (monday, nextMonday)
     }
 
     private func countSessions(in events: [UsageEvent]) -> Int {

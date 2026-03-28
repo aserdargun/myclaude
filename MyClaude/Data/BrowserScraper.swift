@@ -49,28 +49,38 @@ final class BrowserScraper {
         var body = document.body ? document.body.innerText : '';
         var result = {};
 
-        // Find "XX% used" values — the page shows session % first, then weekly %
-        var pctMatches = body.match(/(\d+)%\s*used/g);
-        if (pctMatches && pctMatches.length >= 1) {
-            var s = pctMatches[0].match(/(\d+)/);
-            if (s) result.session_pct = parseInt(s[1]);
-        }
-        if (pctMatches && pctMatches.length >= 2) {
-            var w = pctMatches[1].match(/(\d+)/);
-            if (w) result.weekly_pct = parseInt(w[1]);
-        }
+        // Split body into sections around "Current session" and "All models"/"Weekly"
+        // to reliably separate session vs weekly data.
+        var sessionIdx = body.indexOf('Current session');
+        var weeklyIdx = body.indexOf('All models');
+        if (weeklyIdx === -1) weeklyIdx = body.indexOf('Weekly limits');
 
-        // Find ALL "Resets in" values on the page.
-        // The page shows session first, then weekly. We need the FIRST match
-        // which is the session's reset time. It can be "X hr Y min" or just "Y min".
-        var resetMatches = body.match(/Resets in\s+(?:(\d+)\s*hr?\s+)?(\d+)\s*min/gi);
-        if (resetMatches && resetMatches.length >= 1) {
-            // Parse the FIRST match (session reset)
-            var first = resetMatches[0];
-            var hrMatch = first.match(/(\d+)\s*hr/i);
-            var minMatch = first.match(/(\d+)\s*min/i);
-            result.resets_h = hrMatch ? parseInt(hrMatch[1]) : 0;
-            result.resets_m = minMatch ? parseInt(minMatch[1]) : 0;
+        // Extract session section text (from "Current session" to "All models"/"Weekly")
+        var sessionText = '';
+        var weeklyText = '';
+        if (sessionIdx !== -1 && weeklyIdx !== -1 && weeklyIdx > sessionIdx) {
+            sessionText = body.substring(sessionIdx, weeklyIdx);
+            weeklyText = body.substring(weeklyIdx);
+        } else if (sessionIdx !== -1) {
+            sessionText = body.substring(sessionIdx);
+        } else {
+            sessionText = body;
+        }
+        if (!weeklyText) weeklyText = body;
+
+        // Session %: find "XX% used" in session section
+        var sPct = sessionText.match(/(\d+)%\s*used/);
+        if (sPct) result.session_pct = parseInt(sPct[1]);
+
+        // Weekly %: find "XX% used" in weekly section
+        var wPct = weeklyText.match(/(\d+)%\s*used/);
+        if (wPct) result.weekly_pct = parseInt(wPct[1]);
+
+        // Session "Resets in" from session section only
+        var sReset = sessionText.match(/Resets in\s+(?:(\d+)\s*hr?\s+)?(\d+)\s*min/i);
+        if (sReset) {
+            result.resets_h = sReset[1] ? parseInt(sReset[1]) : 0;
+            result.resets_m = parseInt(sReset[2]);
         }
 
         return JSON.stringify(result);

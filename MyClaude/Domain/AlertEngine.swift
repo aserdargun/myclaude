@@ -104,15 +104,22 @@ final class AlertEngine {
         #endif
     }
 
+    /// Whether the app has a valid bundle identifier required by UNUserNotificationCenter.
+    /// Calling UNUserNotificationCenter.current() without one crashes with an NSException
+    /// that cannot be caught in Swift (Xcode debug builds without .app wrapper).
+    private static var hasBundleIdentifier: Bool {
+        Bundle.main.bundleIdentifier != nil
+    }
+
     // MARK: - Setup
 
     func requestNotificationPermission() {
+        guard Self.hasBundleIdentifier else {
+            print("Notifications unavailable: no bundle identifier (build as .app bundle)")
+            return
+        }
         #if canImport(UserNotifications)
-        // Attempt to request notification permissions.
-        // This requires a valid bundle identifier — present in .app bundles
-        // via Info.plist, but missing in bare SPM executables (swift run).
-        let center = UNUserNotificationCenter.current()
-        center.requestAuthorization(
+        UNUserNotificationCenter.current().requestAuthorization(
             options: [.alert, .sound, .badge]
         ) { [weak self] granted, error in
             DispatchQueue.main.async {

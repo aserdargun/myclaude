@@ -7,7 +7,7 @@ protocol SessionEngineDelegate: AnyObject {
 final class SessionEngine {
     weak var delegate: SessionEngineDelegate?
 
-    /// The current rolling-window session (events in the last 5 hours).
+    /// The current detected session (gap-based detection within rolling window).
     private(set) var currentSession: UsageSession?
 
     /// Historical sessions detected via fixed-window walk (for counting).
@@ -20,6 +20,13 @@ final class SessionEngine {
     private var seenEventIDs: Set<String> = []
 
     private let sessionDuration: TimeInterval
+
+    /// Minimum gap between consecutive events to consider a session boundary.
+    /// Claude's server tracks ALL product usage (Chat, Cowork, Code) but we only
+    /// see Code CLI events. A gap > 1 hour in Code events likely means the user
+    /// stopped coding and may have started a new server-side session via another
+    /// product. When they resume Code, we treat it as a new session.
+    private let sessionGapThreshold: TimeInterval = 60 * 60 // 1 hour
 
     init(sessionDuration: TimeInterval = Constants.sessionDuration) {
         self.sessionDuration = sessionDuration
@@ -43,13 +50,13 @@ final class SessionEngine {
         }
 
         rebuildHistoricalSessions()
-        updateRollingWindow()
+        updateCurrentSession()
         delegate?.sessionEngine(self, didUpdateSession: currentSession)
     }
 
-    /// Called periodically to update the rolling window (events fall off over time).
+    /// Called periodically — updates current session as events age out.
     func tick() {
-        updateRollingWindow()
+        updateCurrentSession()
     }
 
     // MARK: - Computed properties
@@ -90,12 +97,18 @@ final class SessionEngine {
         return allSessions.filter { $0.windowStart >= startOfDay }.count
     }
 
-    // MARK: - Rolling Window
+    // MARK: - Current Session Detection
 
-    /// Updates `currentSession` as a rolling window: all events within the last 5 hours.
-    /// windowStart = oldest event's timestamp → windowEnd = windowStart + 5h.
-    /// "Resets in" = windowEnd − now = time until the oldest event falls off.
-    private func updateRollingWindow() {
+    /// Detects the current session using gap-based analysis within the rolling window.
+    ///
+    /// Strategy: Look at events in the last 5 hours. Find the last significant gap
+    /// (> 1 hour) between consecutive events. Events after that gap form the "current
+    /// session." This approximates Claude's server-side session boundaries, which
+    /// include Chat/Cowork/Code usage that we can't see in local CLI logs.
+    ///
+    /// windowStart = first event after the last gap → windowEnd = windowStart + 5h.
+    /// "Resets in" = windowEnd − now.
+    private func updateCurrentSession() {
         let now = Date()
         let cutoff = now.addingTimeInterval(-sessionDuration)
         let recentEvents = allEvents
@@ -105,10 +118,23 @@ final class SessionEngine {
         if recentEvents.isEmpty {
             // No events in last 5h — show the most recent historical session (expired)
             currentSession = allSessions.last
-        } else {
-            let oldest = recentEvents.first!.timestamp
-            currentSession = UsageSession(windowStart: oldest, events: recentEvents)
+            return
         }
+
+        // Walk backwards through events to find the last gap > threshold.
+        // Events after that gap belong to the current session.
+        var sessionStartIndex = 0
+        for i in stride(from: recentEvents.count - 1, through: 1, by: -1) {
+            let gap = recentEvents[i].timestamp.timeIntervalSince(recentEvents[i - 1].timestamp)
+            if gap >= sessionGapThreshold {
+                sessionStartIndex = i
+                break
+            }
+        }
+
+        let sessionEvents = Array(recentEvents[sessionStartIndex...])
+        let windowStart = sessionEvents.first!.timestamp
+        currentSession = UsageSession(windowStart: windowStart, events: sessionEvents)
     }
 
     // MARK: - Historical Sessions (Fixed Windows)

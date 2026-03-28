@@ -34,12 +34,12 @@ struct UsageEvent: Codable, Identifiable {
     }
 }
 
-// MARK: - Rolling Window Session
+// MARK: - Usage Session
 //
-// Claude uses a rolling 5-hour window. At any moment your "current usage"
-// is the sum of events in the past 5 hours. "Resets in X" = time until
-// the oldest event in the window falls off. As events age past 5 hours
-// they stop counting toward your limit.
+// Claude uses 5-hour session windows tracked server-side across all products
+// (Chat, Cowork, Code). Since we only see Code CLI logs, we detect session
+// boundaries by finding gaps (> 1h) in events. The first event after the
+// last gap is treated as the session start, giving windowEnd = start + 5h.
 
 struct UsageSession: Identifiable {
     let id: UUID

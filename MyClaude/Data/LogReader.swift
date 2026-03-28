@@ -2,6 +2,7 @@ import Foundation
 
 protocol LogReaderDelegate: AnyObject {
     func logReader(_ reader: LogReader, didReadEvents events: [UsageEvent])
+    func logReader(_ reader: LogReader, didFinishScanning totalEvents: Int)
     func logReader(_ reader: LogReader, didEncounterError error: Error)
 }
 
@@ -96,7 +97,14 @@ final class LogReader: @unchecked Sendable {
 
     private func scanAllLogs() {
         isScanning = true
-        defer { isScanning = false }
+        defer {
+            isScanning = false
+            let total = totalEventsRead
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.delegate?.logReader(self, didFinishScanning: total)
+            }
+        }
         for path in Constants.claudeLogPaths {
             scanDirectory(at: path)
         }

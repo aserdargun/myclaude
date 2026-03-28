@@ -2,7 +2,7 @@ import SwiftUI
 
 @main
 struct MyClaudeApp: App {
-    @State private var viewModel = UsageViewModel()
+    @State private var viewModel: UsageViewModel
 
     var body: some Scene {
         MenuBarExtra(viewModel.menuBarTitle, systemImage: "brain.head.profile") {
@@ -10,10 +10,12 @@ struct MyClaudeApp: App {
         }
         .menuBarExtraStyle(.window)
         .defaultSize(width: 280, height: 500)
-        .onChange(of: viewModel.menuBarTitle) { _, _ in }
     }
 
     init() {
         NSApplication.shared.setActivationPolicy(.accessory)
+        let vm = UsageViewModel()
+        _viewModel = State(initialValue: vm)
+        vm.start()
     }
 }

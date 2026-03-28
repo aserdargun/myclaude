@@ -123,9 +123,6 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         if let session = sessionEngine.currentSession {
             alertEngine.evaluate(session: session, sessionEngine: sessionEngine)
         }
-        if isRefreshing && !logReader.isScanning {
-            isRefreshing = false
-        }
     }
 
     private func updateUIState() {
@@ -149,10 +146,15 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         sessionEngine.processEvents(events)
         aggregator.addEvents(events)
         updateUIState()
+    }
+
+    func logReader(_ reader: LogReader, didFinishScanning totalEvents: Int) {
         isRefreshing = false
+        updateUIState()
     }
 
     func logReader(_ reader: LogReader, didEncounterError error: Error) {
+        isRefreshing = false
         print("Log reader error: \(error)")
     }
 

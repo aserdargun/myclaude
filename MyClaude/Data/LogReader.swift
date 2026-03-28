@@ -16,6 +16,11 @@ final class LogReader: @unchecked Sendable {
     private let queue = DispatchQueue(label: "com.myclaude.logreader", qos: .utility)
     private(set) var lastReadTime: Date?
     private(set) var totalEventsRead: Int = 0
+    private(set) var isScanning: Bool = false
+
+    /// Max bytes to read from a file on first encounter (tail read).
+    /// 512 KB covers ~5 hours of typical Claude Code conversation.
+    private let maxInitialReadBytes: UInt64 = 512 * 1024
 
     init(parser: ParserProtocol = MyClaudeLogParser()) {
         self.parser = parser
@@ -90,6 +95,8 @@ final class LogReader: @unchecked Sendable {
     // MARK: - Scanning
 
     private func scanAllLogs() {
+        isScanning = true
+        defer { isScanning = false }
         for path in Constants.claudeLogPaths {
             scanDirectory(at: path)
         }
@@ -116,6 +123,9 @@ final class LogReader: @unchecked Sendable {
         ) else { return }
 
         for case let fileURL as URL in enumerator {
+            // Skip subagent logs — they're duplicates of main conversation data
+            if fileURL.path.contains("/subagents/") { continue }
+
             guard let resourceValues = try? fileURL.resourceValues(
                 forKeys: [.isRegularFileKey, .contentModificationDateKey]
             ) else { continue }
@@ -138,24 +148,43 @@ final class LogReader: @unchecked Sendable {
     private func readFile(at path: String) {
         guard fileManager.isReadableFile(atPath: path) else { return }
 
-        let lastPos = lastReadPositions[path] ?? 0
-
         guard let handle = FileHandle(forReadingAtPath: path) else { return }
         defer { handle.closeFile() }
 
         // Get file size
         handle.seekToEndOfFile()
         let fileSize = handle.offsetInFile
-        guard fileSize > lastPos else { return }
+        guard fileSize > 0 else { return }
 
-        // Read new data
-        handle.seek(toFileOffset: lastPos)
+        let lastPos = lastReadPositions[path]
+        let readFrom: UInt64
+
+        if let lastPos {
+            // Incremental read from where we left off
+            guard fileSize > lastPos else { return }
+            readFrom = lastPos
+        } else {
+            // First time seeing this file — only read the tail
+            if fileSize > maxInitialReadBytes {
+                readFrom = fileSize - maxInitialReadBytes
+            } else {
+                readFrom = 0
+            }
+        }
+
+        handle.seek(toFileOffset: readFrom)
         let newData = handle.readDataToEndOfFile()
         lastReadPositions[path] = fileSize
 
         guard !newData.isEmpty else { return }
 
-        let events = parser.parse(data: newData, fromFile: path)
+        var events = parser.parse(data: newData, fromFile: path)
+
+        // If we started mid-file on first read, drop the first (likely partial) line
+        if lastPos == nil && readFrom > 0 {
+            events = Array(events.dropFirst())
+        }
+
         guard !events.isEmpty else { return }
 
         lastReadTime = Date()

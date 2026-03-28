@@ -24,6 +24,7 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
     var sessionStartTime: Date?
     var sessionEndTime: Date?
     var isSessionActive: Bool = false
+    var isRefreshing: Bool = false
 
     // MARK: - Status bar display
 
@@ -96,6 +97,7 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
     }
 
     func forceRefresh() {
+        isRefreshing = true
         logReader.forceRefresh()
     }
 
@@ -119,6 +121,9 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         sessionEngine.checkExpiration()
         updateUIState()
         alertEngine.evaluate(session: sessionEngine.currentSession, sessionEngine: sessionEngine)
+        if isRefreshing && !logReader.isScanning {
+            isRefreshing = false
+        }
     }
 
     private func updateUIState() {
@@ -142,6 +147,7 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         sessionEngine.processEvents(events)
         aggregator.addEvents(events)
         updateUIState()
+        isRefreshing = false
     }
 
     func logReader(_ reader: LogReader, didEncounterError error: Error) {

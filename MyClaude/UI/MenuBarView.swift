@@ -129,11 +129,22 @@ struct MenuBarView: View {
 
     private var actionsSection: some View {
         VStack(spacing: 4) {
-            Button("Refresh Now") {
+            Button {
                 viewModel.forceRefresh()
+            } label: {
+                if viewModel.isRefreshing {
+                    HStack(spacing: 4) {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text("Scanning...")
+                    }
+                } else {
+                    Text("Refresh Now")
+                }
             }
             .buttonStyle(.borderless)
             .font(.caption)
+            .disabled(viewModel.isRefreshing)
 
             Button("Quit myClaude") {
                 NSApplication.shared.terminate(nil)

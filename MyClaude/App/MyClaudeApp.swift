@@ -14,10 +14,14 @@ struct MyClaudeApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
-        MenuBarExtra(appDelegate.viewModel.menuBarTitle) {
+        MenuBarExtra {
             MenuBarView(viewModel: appDelegate.viewModel)
+        } label: {
+            Text(appDelegate.viewModel.menuBarTitle)
+                .font(.system(size: 11))
+                .monospacedDigit()
         }
         .menuBarExtraStyle(.window)
-        .defaultSize(width: 280, height: 500)
+        .defaultSize(width: 340, height: 500)
     }
 }

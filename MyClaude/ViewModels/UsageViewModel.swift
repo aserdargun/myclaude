@@ -94,9 +94,9 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
     var menuBarTitle: String {
         if isSessionActive {
             let mins = Int(remainingTime / 60)
-            let sessionPct = estimatedSessionPercent.map { "\(Int(min($0, 100)))%" } ?? "--"
-            let weeklyPct = estimatedWeeklyPercent.map { "\(Int(min($0, 100)))%" } ?? "--"
-            return "\(mins) min | \(sessionPct) | \(weeklyPct)"
+            let sessionPct = estimatedSessionPercent.map { "\(Int(min($0, 100)))%" } ?? "-"
+            let weeklyPct = estimatedWeeklyPercent.map { "\(Int(min($0, 100)))%" } ?? "-"
+            return "\(mins)m-\(sessionPct)-\(weeklyPct)"
         } else if hasSession {
             return "Expired"
         } else {

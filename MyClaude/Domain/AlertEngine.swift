@@ -107,22 +107,24 @@ final class AlertEngine {
     // MARK: - Setup
 
     func requestNotificationPermission() {
-        // UNUserNotificationCenter requires a valid app bundle with a bundle identifier.
-        // SPM command-line builds and Xcode debug runs without a .app wrapper will crash.
-        guard Bundle.main.bundleIdentifier != nil else {
-            print("Notifications unavailable: no bundle identifier")
-            return
-        }
         #if canImport(UserNotifications)
-        notificationsAvailable = true
-        UNUserNotificationCenter.current().requestAuthorization(
+        // Attempt to request notification permissions.
+        // This requires a valid bundle identifier — present in .app bundles
+        // via Info.plist, but missing in bare SPM executables (swift run).
+        let center = UNUserNotificationCenter.current()
+        center.requestAuthorization(
             options: [.alert, .sound, .badge]
         ) { [weak self] granted, error in
-            if let error {
-                print("Notification permission error: \(error)")
-                self?.notificationsAvailable = false
-            } else if !granted {
-                self?.notificationsAvailable = false
+            DispatchQueue.main.async {
+                if let error {
+                    print("Notification permission error: \(error)")
+                    self?.notificationsAvailable = false
+                } else if granted {
+                    self?.notificationsAvailable = true
+                } else {
+                    print("Notifications not granted by user")
+                    self?.notificationsAvailable = false
+                }
             }
         }
         #endif

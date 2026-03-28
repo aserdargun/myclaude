@@ -7,16 +7,16 @@ protocol SessionEngineDelegate: AnyObject {
 final class SessionEngine {
     weak var delegate: SessionEngineDelegate?
 
-    /// The current or most recent session window.
+    /// The current rolling-window session (events in the last 5 hours).
     private(set) var currentSession: UsageSession?
 
-    /// All detected session windows (including current).
+    /// Historical sessions detected via fixed-window walk (for counting).
     private(set) var allSessions: [UsageSession] = []
 
-    /// All events ever received, used to rebuild windows.
+    /// All events ever received.
     private var allEvents: [UsageEvent] = []
 
-    /// Deduplication: track event IDs we've already seen.
+    /// Deduplication keys.
     private var seenEventIDs: Set<String> = []
 
     private let sessionDuration: TimeInterval
@@ -28,7 +28,6 @@ final class SessionEngine {
     // MARK: - Public API
 
     func processEvents(_ events: [UsageEvent]) {
-        // Deduplicate and accumulate
         var addedNew = false
         for event in events {
             let key = "\(event.timestamp.timeIntervalSince1970)-\(event.tokens ?? 0)"
@@ -43,14 +42,14 @@ final class SessionEngine {
             return
         }
 
-        rebuildSessions()
+        rebuildHistoricalSessions()
+        updateRollingWindow()
         delegate?.sessionEngine(self, didUpdateSession: currentSession)
     }
 
-    /// Called periodically — no-op for now, windows are managed during event processing.
+    /// Called periodically to update the rolling window (events fall off over time).
     func tick() {
-        // Nothing to do — we keep the most recent window visible even if expired,
-        // so the user can see their last session info.
+        updateRollingWindow()
     }
 
     // MARK: - Computed properties
@@ -65,12 +64,10 @@ final class SessionEngine {
         return min(1.0, elapsed / sessionDuration)
     }
 
-    /// Whether the current session window is still active (not expired).
     var isActive: Bool {
         currentSession?.isActive ?? false
     }
 
-    /// Whether there's a session at all (active or recently expired).
     var hasSession: Bool {
         currentSession != nil
     }
@@ -87,17 +84,37 @@ final class SessionEngine {
         return .safe
     }
 
-    /// Number of detected sessions today.
+    /// Number of detected sessions today (uses historical fixed-window sessions).
     var todaySessionCount: Int {
         let startOfDay = Calendar.current.startOfDay(for: Date())
         return allSessions.filter { $0.windowStart >= startOfDay }.count
     }
 
-    // MARK: - Rebuild
+    // MARK: - Rolling Window
 
-    /// Rebuilds all session windows from scratch using all accumulated events.
-    /// This ensures correct windows regardless of the order files/events arrive.
-    private func rebuildSessions() {
+    /// Updates `currentSession` as a rolling window: all events within the last 5 hours.
+    /// windowStart = oldest event's timestamp → windowEnd = windowStart + 5h.
+    /// "Resets in" = windowEnd − now = time until the oldest event falls off.
+    private func updateRollingWindow() {
+        let now = Date()
+        let cutoff = now.addingTimeInterval(-sessionDuration)
+        let recentEvents = allEvents
+            .filter { $0.timestamp >= cutoff && $0.timestamp <= now }
+            .sorted { $0.timestamp < $1.timestamp }
+
+        if recentEvents.isEmpty {
+            // No events in last 5h — show the most recent historical session (expired)
+            currentSession = allSessions.last
+        } else {
+            let oldest = recentEvents.first!.timestamp
+            currentSession = UsageSession(windowStart: oldest, events: recentEvents)
+        }
+    }
+
+    // MARK: - Historical Sessions (Fixed Windows)
+
+    /// Rebuilds fixed-window sessions for historical counting / stats.
+    private func rebuildHistoricalSessions() {
         let sorted = allEvents.sorted { $0.timestamp < $1.timestamp }
 
         var sessions: [UsageSession] = []
@@ -106,14 +123,11 @@ final class SessionEngine {
         for event in sorted {
             if let sess = current {
                 if event.timestamp >= sess.windowEnd {
-                    // Event falls after current window — finalize and start new
                     sessions.append(sess)
                     current = UsageSession(windowStart: event.timestamp, events: [event])
                 } else if event.timestamp >= sess.windowStart {
-                    // Event falls within current window
                     current?.events.append(event)
                 }
-                // Events before windowStart belong to a previous window — already handled
             } else {
                 current = UsageSession(windowStart: event.timestamp, events: [event])
             }
@@ -124,6 +138,5 @@ final class SessionEngine {
         }
 
         allSessions = sessions
-        currentSession = sessions.last
     }
 }

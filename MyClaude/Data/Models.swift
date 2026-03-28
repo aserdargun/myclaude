@@ -34,12 +34,12 @@ struct UsageEvent: Codable, Identifiable {
     }
 }
 
-// MARK: - Fixed Window Session
+// MARK: - Rolling Window Session
 //
-// Claude uses fixed 5-hour windows: a window starts when you first make
-// a request after the previous window expired. All usage within that
-// window counts toward your limit. "Resets in X" = time until the
-// entire window expires and usage resets to 0.
+// Claude uses a rolling 5-hour window. At any moment your "current usage"
+// is the sum of events in the past 5 hours. "Resets in X" = time until
+// the oldest event in the window falls off. As events age past 5 hours
+// they stop counting toward your limit.
 
 struct UsageSession: Identifiable {
     let id: UUID

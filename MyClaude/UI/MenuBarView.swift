@@ -77,15 +77,15 @@ struct MenuBarView: View {
                 if let start = viewModel.windowStartTime,
                    let end = viewModel.windowEndTime {
                     HStack {
-                        Text("Started: \(start.shortTimeString)")
+                        Text("First: \(start.shortTimeString)")
                         Spacer()
-                        Text("Ends: \(end.shortTimeString)")
+                        Text("Resets: \(end.shortTimeString)")
                     }
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                 }
             } else if viewModel.hasSession {
-                // Session expired
+                // Session expired (no events in last 5h)
                 HStack {
                     Text("Session expired")
                         .font(.title3)
@@ -99,7 +99,7 @@ struct MenuBarView: View {
                 if let start = viewModel.windowStartTime,
                    let end = viewModel.windowEndTime {
                     HStack {
-                        Text("Was: \(start.shortTimeString) – \(end.shortTimeString)")
+                        Text("Last active: \(start.shortTimeString) – \(end.shortTimeString)")
                         Spacer()
                     }
                     .font(.caption2)

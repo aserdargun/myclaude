@@ -11,18 +11,7 @@ let package = Package(
         .executableTarget(
             name: "MyClaude",
             path: ".",
-            exclude: ["Tests", "Package.swift"],
-            resources: [
-                .copy("Info.plist")
-            ],
-            linkerSettings: [
-                .unsafeFlags([
-                    "-Xlinker", "-sectcreate",
-                    "-Xlinker", "__TEXT",
-                    "-Xlinker", "__info_plist",
-                    "-Xlinker", "Info.plist"
-                ])
-            ]
+            exclude: ["Tests", "Package.swift", "Info.plist"]
         ),
         .testTarget(
             name: "MyClaudeTests",

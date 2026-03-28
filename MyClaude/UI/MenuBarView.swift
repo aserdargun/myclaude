@@ -200,14 +200,37 @@ struct MenuBarView: View {
                 icon: "chart.pie"
             )
 
+            // Show estimated % from calibration prominently
+            if let pct = viewModel.estimatedSessionPercent {
+                HStack {
+                    Text("Estimated")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text("\(Int(min(pct, 100)))% of limit")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.blue)
+                }
+            }
+
+            HStack {
+                StatRow(
+                    label: viewModel.calibrationData != nil ? "Local Tokens" : "Tokens",
+                    value: formatTokens(viewModel.currentTokens)
+                )
+            }
             StatRow(
-                label: "Tokens",
-                value: formatTokens(viewModel.currentTokens)
-            )
-            StatRow(
-                label: "Events",
+                label: viewModel.calibrationData != nil ? "Local Events" : "Events",
                 value: "\(viewModel.currentEventCount)"
             )
+
+            if viewModel.calibrationData != nil && viewModel.currentTokens == 0 {
+                Text("No local events in this period yet.\nRe-calibrate to update % from Claude.")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 

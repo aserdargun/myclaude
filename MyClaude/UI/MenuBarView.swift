@@ -82,7 +82,7 @@ struct MenuBarView: View {
                 .help("Settings & Calibration")
 
                 Circle()
-                    .fill(viewModel.statusColor)
+                    .fill(sessionPercentColor)
                     .frame(width: 10, height: 10)
             }
             .padding(.bottom, 4)
@@ -144,7 +144,7 @@ struct MenuBarView: View {
                         Text(viewModel.sessionPercentDisplay)
                             .font(.title3)
                             .fontWeight(.semibold)
-                            .foregroundStyle(viewModel.statusColor)
+                            .foregroundStyle(sessionPercentColor)
                         if let cal = viewModel.calibrationData {
                             Text("Updated \(cal.calibratedAt.shortTimeString)")
                                 .font(.caption2)
@@ -155,7 +155,7 @@ struct MenuBarView: View {
 
                 ProgressBarView(
                     progress: viewModel.calibratedSessionProgress,
-                    color: viewModel.statusColor
+                    color: sessionPercentColor
                 )
 
                 if let start = viewModel.windowStartTime,
@@ -263,7 +263,7 @@ struct MenuBarView: View {
                     label: "All Models",
                     percent: weeklyPct,
                     reset: viewModel.scrapedAllModelsReset,
-                    color: weeklyLimitColor(weeklyPct)
+                    color: usageColor(weeklyPct)
                 )
             }
 
@@ -273,7 +273,7 @@ struct MenuBarView: View {
                     label: "Sonnet only",
                     percent: sonnetPct,
                     reset: viewModel.scrapedSonnetReset,
-                    color: weeklyLimitColor(sonnetPct)
+                    color: usageColor(sonnetPct)
                 )
             }
 
@@ -319,7 +319,16 @@ struct MenuBarView: View {
         }
     }
 
-    private func weeklyLimitColor(_ percent: Double) -> Color {
+    /// Session percentage color using the unified usage color scale.
+    private var sessionPercentColor: Color {
+        if let pct = viewModel.estimatedSessionPercent {
+            return usageColor(pct)
+        }
+        return usageColor(viewModel.sessionProgress * 100)
+    }
+
+    /// Unified color for any usage percentage: green < 60%, yellow 60–80%, red > 80%.
+    private func usageColor(_ percent: Double) -> Color {
         if percent >= 80 { return .red }
         if percent >= 60 { return .yellow }
         return .green

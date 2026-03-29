@@ -15,6 +15,7 @@ struct MenuBarView: View {
         VStack(alignment: .leading, spacing: 12) {
             // Header
             HStack {
+                MyClaudeIcon(size: 18)
                 Text("myClaude")
                     .font(.headline)
                     .fontWeight(.bold)
@@ -97,6 +98,9 @@ struct MenuBarView: View {
             // Claude header (centered)
             HStack {
                 Spacer()
+                Image(systemName: "sparkle")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
                 Text("Claude")
                     .font(.caption)
                     .fontWeight(.semibold)

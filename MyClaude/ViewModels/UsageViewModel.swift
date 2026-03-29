@@ -1,5 +1,4 @@
 import Foundation
-import Combine
 import SwiftUI
 
 @Observable
@@ -19,9 +18,6 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
     var todayStats: DailyStats = DailyStats(
         date: Date(), totalTokens: 0, eventCount: 0, sessionCount: 0
     )
-    var lastLogRead: Date?
-    var totalEventsRead: Int = 0
-    var latestAlert: UsageAlert?
     var windowStartTime: Date?
     var windowEndTime: Date?
     var isSessionActive: Bool = false
@@ -253,12 +249,6 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         updateUIState()
     }
 
-    func resetCalibration() {
-        calibrationManager.reset()
-        calibrationPeriodChanged = false
-        updateUIState()
-    }
-
     /// Auto-calibrate by scraping claude.ai/settings from an open browser tab.
     func scrapeAndCalibrate() {
         isScraping = true
@@ -313,7 +303,7 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         )
     }
 
-    func restartScrapeTimer() {
+    private func restartScrapeTimer() {
         startScrapeTimer()
     }
 
@@ -436,8 +426,6 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         todaySessionCount = sessionEngine.todaySessionCount
         weeklyStats = aggregator.weeklyStats()
         todayStats = aggregator.todayStats()
-        lastLogRead = logReader.lastReadTime
-        totalEventsRead = logReader.totalEventsRead
     }
 
     // MARK: - LogReaderDelegate
@@ -467,6 +455,6 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
     // MARK: - AlertEngineDelegate
 
     func alertEngine(_ engine: AlertEngine, didTriggerAlert alert: UsageAlert) {
-        latestAlert = alert
+        // Alert triggered — notification handled by AlertEngine
     }
 }

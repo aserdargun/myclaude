@@ -11,7 +11,7 @@ let package = Package(
         .executableTarget(
             name: "MyClaude",
             path: ".",
-            exclude: ["Tests", "Package.swift", "Info.plist"]
+            exclude: ["Tests", "Package.swift", "Info.plist", "Resources"]
         ),
         .testTarget(
             name: "MyClaudeTests",

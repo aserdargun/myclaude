@@ -14,7 +14,7 @@ final class AggregatorTests: XCTestCase {
 
     func testCurrentSessionUsage() {
         let session = UsageSession(
-            startTime: Date().addingTimeInterval(-3600),
+            windowStart: Date().addingTimeInterval(-3600),
             events: [
                 makeEvent(tokens: 100),
                 makeEvent(tokens: 200),

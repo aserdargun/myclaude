@@ -80,7 +80,7 @@ final class SessionEngineTests: XCTestCase {
 
         // Current session should be the new window
         XCTAssertEqual(engine.currentSession?.eventCount, 1)
-        XCTAssertEqual(engine.sessionHistory.count, 1) // Old window archived
+        XCTAssertEqual(engine.allSessions.count, 1) // Old window archived
 
         let remaining = engine.remainingTime
         // New window started 30min ago → ~4h30m remaining
@@ -96,7 +96,7 @@ final class SessionEngineTests: XCTestCase {
 
         XCTAssertNil(engine.currentSession)
         XCTAssertFalse(engine.isActive)
-        XCTAssertEqual(engine.sessionHistory.count, 1)
+        XCTAssertEqual(engine.allSessions.count, 1)
     }
 
     // MARK: - Progress

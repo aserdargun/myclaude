@@ -1,20 +1,31 @@
 # myClaude - macOS Menu Bar Usage Tracker
 
-A lightweight macOS menu bar application that tracks Claude Code CLI usage with rolling 5-hour session countdowns, weekly statistics, and real-time alerts.
+A macOS menu bar app that tracks Claude Code CLI usage with real-time session countdowns, weekly limits, and automated browser scraping from claude.ai.
 
 ## Features
 
-- **5-hour rolling session countdown** with color-coded status (green/yellow/red)
-- **Real-time log parsing** from `~/.claude/` directories
-- **Weekly usage statistics** with daily breakdowns
-- **Native macOS notifications** at 80% and 95% thresholds
-- **Low resource usage** - runs efficiently in background
+- **Color-coded menu bar** — `250m-50%-4%` with per-segment coloring (green/yellow/red)
+- **Automated browser scraping** — reads session and weekly usage % from `claude.ai/settings/usage` via Chrome/Safari
+- **5-hour session countdown** — tracks Claude's rolling session window with time remaining
+- **Weekly limits** — All Models and Sonnet only progress bars with reset times
+- **Local usage tracking** — tokens, events, sessions from `~/.claude/` log files
+- **Cost-weighted tokens** — output×1.0, input×0.25, cache_creation×0.31, cache_read×0.025
+- **Daily breakdown** — Sunday to Saturday usage chart
+- **Auto-refresh** — configurable scrape interval (default: 300 seconds)
+
+## Color Codes
+
+| Color | Usage % | Time Remaining |
+|-------|---------|----------------|
+| Green | < 60% | > 1 hour |
+| Yellow | 60–80% | 30min – 1 hour |
+| Red | > 80% | < 30 minutes |
 
 ## Requirements
 
 - macOS 14.0+ (Sonoma)
 - Swift 5.10+
-- Xcode 15+
+- Google Chrome or Safari (for browser scraping)
 
 ## Build & Run
 
@@ -35,38 +46,44 @@ swift run
 ### Create .app Bundle
 
 ```bash
-cd MyClaude
-swift build -c release
-# The binary will be at .build/release/MyClaude
+./build.sh
+open build/myClaude.app
 ```
 
 ## Architecture
 
 ```
-Log File Change → LogReader → Parser → SessionEngine → Aggregator → ViewModel → UI
-                                                         ↓
-                                                    AlertEngine → Notifications
+Browser Scraping → BrowserScraper → CalibrationManager
+                                          ↓
+Log Files → LogReader → Parser → SessionEngine → Aggregator → ViewModel → UI
+                                                                    ↓
+                                                              AlertEngine → Notifications
 ```
 
 ## Project Structure
 
 ```
 MyClaude/
-├── App/              # App entry point and menu bar controller
+├── App/              # App entry point, NSStatusItem, panel
 ├── UI/               # SwiftUI views and components
+│   └── Components/   # Reusable UI (ProgressBar, MyClaudeIcon)
 ├── ViewModels/       # Observable view model
 ├── Domain/           # Session engine, aggregator, alerts
-├── Data/             # Log reader, parser, storage, models
+├── Data/             # Log reader, parser, storage, models, browser scraper, calibration
 ├── Utils/            # Extensions and constants
+├── Resources/        # App icon assets
 └── Tests/            # Unit tests
 ```
 
-## Configuration
+## Settings
 
-Edit `Utils/Constants.swift` to customize:
+Accessible via the gear icon in the dropdown:
 
-- `sessionDuration` - Rolling window duration (default: 5 hours)
-- `idleThreshold` - Idle gap detection (default: 30 minutes)
-- `warningThreshold` - Warning alert at 80%
-- `criticalThreshold` - Critical alert at 95%
-- `uiUpdateInterval` - UI refresh rate (default: 5 seconds)
+- **Source URL** — browser page to scrape (default: `https://claude.ai/settings/usage`)
+- **Auto-refresh** — scrape interval in seconds (default: 300)
+
+## Permissions
+
+On first launch, macOS will prompt for:
+
+- **Automation** — allow myClaude to read browser tabs (System Settings → Privacy → Automation)

@@ -84,7 +84,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func showPanel() {
-        guard let panel, let hostingView,
+        guard let panel,
               let button = statusItem.button,
               let buttonWindow = button.window else { return }
 
@@ -93,15 +93,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let screenRect = buttonWindow.convertToScreen(buttonRect)
 
         let panelWidth: CGFloat = 340
+        let panelHeight: CGFloat = 620
         let x = screenRect.midX - panelWidth / 2
-        let y = screenRect.minY
-
-        // Size the panel to fit content
-        let fittingSize = hostingView.fittingSize
-        let panelHeight = min(fittingSize.height, 700)
+        let y = screenRect.minY - panelHeight
 
         panel.setFrame(
-            NSRect(x: x, y: y - panelHeight, width: panelWidth, height: panelHeight),
+            NSRect(x: x, y: y, width: panelWidth, height: panelHeight),
             display: true
         )
 
@@ -118,13 +115,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func startEventMonitor() {
         stopEventMonitor()
-        eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] event in
+        eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
             guard let self, let panel = self.panel, panel.isVisible else { return }
-            // Only close if the click is outside the panel
-            let clickLocation = event.locationInWindow
-            if event.window != panel {
-                self.closePanel()
-            }
+            self.closePanel()
         }
     }
 
@@ -138,7 +131,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func updateMenuBarTitle() {
         guard let button = statusItem.button else { return }
 
-        let fontSize: CGFloat = 9
+        let fontSize: CGFloat = 12
         let font = NSFont.monospacedDigitSystemFont(ofSize: fontSize, weight: .medium)
 
         if viewModel.isSessionActive {

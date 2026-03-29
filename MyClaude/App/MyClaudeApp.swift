@@ -1,12 +1,39 @@
 import SwiftUI
 import AppKit
 
+/// Floating panel that behaves like MenuBarExtra's .window style:
+/// - Closes when clicking outside or when the app deactivates
+/// - Non-activating (doesn't steal focus from other apps)
+/// - Proper rounded appearance
+private class MenuBarPanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+
+    init(contentRect: NSRect) {
+        super.init(
+            contentRect: contentRect,
+            styleMask: [.nonactivatingPanel, .titled, .fullSizeContentView],
+            backing: .buffered,
+            defer: false
+        )
+        isFloatingPanel = true
+        level = .statusBar
+        titleVisibility = .hidden
+        titlebarAppearsTransparent = true
+        isMovableByWindowBackground = false
+        isReleasedWhenClosed = false
+        hidesOnDeactivate = true
+        backgroundColor = .clear
+    }
+}
+
 @main
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let viewModel = UsageViewModel()
     private var statusItem: NSStatusItem!
-    private var popover: NSPopover!
+    private var panel: MenuBarPanel!
+    private var hostingView: NSHostingView<MenuBarView>!
     private var updateTimer: Timer?
+    private var eventMonitor: Any?
 
     static func main() {
         let app = NSApplication.shared
@@ -23,17 +50,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if let button = statusItem.button {
             button.target = self
-            button.action = #selector(togglePopover)
+            button.action = #selector(togglePanel)
             updateMenuBarTitle()
         }
 
-        // Create popover with SwiftUI content
-        popover = NSPopover()
-        popover.contentSize = NSSize(width: 340, height: 500)
-        popover.behavior = .transient
-        popover.contentViewController = NSHostingController(
-            rootView: MenuBarView(viewModel: viewModel)
-        )
+        // Create panel with SwiftUI content
+        panel = MenuBarPanel(contentRect: NSRect(x: 0, y: 0, width: 340, height: 500))
+        hostingView = NSHostingView(rootView: MenuBarView(viewModel: viewModel))
+        panel.contentView = hostingView
 
         // Start view model
         viewModel.start()
@@ -46,25 +70,47 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             userInfo: nil,
             repeats: true
         )
+
+        // Monitor clicks outside the panel to close it
+        eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
+            self?.closePanel()
+        }
     }
 
-    @objc private func togglePopover() {
-        guard let button = statusItem.button else { return }
-
-        if popover.isShown {
-            popover.performClose(nil)
+    @objc private func togglePanel() {
+        if panel.isVisible {
+            closePanel()
         } else {
-            // Update content before showing
-            popover.contentViewController = NSHostingController(
-                rootView: MenuBarView(viewModel: viewModel)
-            )
-            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-
-            // Close when clicking outside
-            if let window = popover.contentViewController?.view.window {
-                window.makeKey()
-            }
+            showPanel()
         }
+    }
+
+    private func showPanel() {
+        guard let button = statusItem.button,
+              let buttonWindow = button.window else { return }
+
+        // Position panel below the status item
+        let buttonRect = button.convert(button.bounds, to: nil)
+        let screenRect = buttonWindow.convertToScreen(buttonRect)
+
+        let panelWidth: CGFloat = 340
+        let x = screenRect.midX - panelWidth / 2
+        let y = screenRect.minY
+
+        // Size the panel to fit content
+        let fittingSize = hostingView.fittingSize
+        let panelHeight = min(fittingSize.height, 700)
+
+        panel.setFrame(
+            NSRect(x: x, y: y - panelHeight, width: panelWidth, height: panelHeight),
+            display: true
+        )
+
+        panel.makeKeyAndOrderFront(nil)
+    }
+
+    private func closePanel() {
+        panel.orderOut(nil)
     }
 
     @objc private func updateMenuBarTitle() {
@@ -81,7 +127,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let result = NSMutableAttributedString()
 
             // Time segment — colored by time remaining
-            let timeColor = nsColor(from: viewModel.statusColor)
+            let timeColor = nsColorForTime()
             let timeStr = NSAttributedString(
                 string: "\(mins)m",
                 attributes: [.font: font, .foregroundColor: timeColor]
@@ -141,17 +187,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 attributes: [.font: font, .foregroundColor: NSColor.secondaryLabelColor]
             )
         }
+
+        // Resize panel if visible to fit updated content
+        if panel.isVisible {
+            let fittingSize = hostingView.fittingSize
+            let panelHeight = min(fittingSize.height, 700)
+            var frame = panel.frame
+            let oldHeight = frame.height
+            frame.size.height = panelHeight
+            frame.origin.y += oldHeight - panelHeight
+            panel.setFrame(frame, display: true)
+        }
     }
 
-    /// Convert usage percentage to NSColor: green < 60%, yellow 60-80%, red > 80%.
+    /// Usage percentage to NSColor: green < 60%, yellow 60-80%, red > 80%.
     private func usageNSColor(_ percent: Int) -> NSColor {
         if percent >= 80 { return NSColor.systemRed }
         if percent >= 60 { return NSColor.systemYellow }
         return NSColor.systemGreen
     }
 
-    /// Convert SwiftUI Color to NSColor for time-based status.
-    private func nsColor(from color: Color) -> NSColor {
+    /// Time-based status color.
+    private func nsColorForTime() -> NSColor {
         switch viewModel.alertLevel {
         case .safe: return NSColor.systemGreen
         case .warning: return NSColor.systemYellow

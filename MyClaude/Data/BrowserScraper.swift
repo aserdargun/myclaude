@@ -7,8 +7,12 @@ struct ScrapedUsageData {
     let sessionPercent: Double
     /// Weekly "All models" percentage used (e.g. 55.0)
     let weeklyPercent: Double
+    /// Weekly "Sonnet only" percentage used (e.g. 30.0), nil if not found
+    let sonnetPercent: Double?
     /// Seconds until the current session resets
     let sessionResetsIn: TimeInterval
+    /// Seconds until the weekly limits reset, nil if not found
+    let weeklyResetsIn: TimeInterval?
 }
 
 enum BrowserScraperError: LocalizedError {
@@ -72,15 +76,39 @@ final class BrowserScraper {
         var sPct = sessionText.match(/(\d+)%\s*used/);
         if (sPct) result.session_pct = parseInt(sPct[1]);
 
-        // Weekly %: find "XX% used" in weekly section
-        var wPct = weeklyText.match(/(\d+)%\s*used/);
+        // Weekly section: split at "All models" and "Sonnet" boundaries
+        // Find "All models" subsection and "Sonnet" subsection within weekly text
+        var sonnetIdx = weeklyText.indexOf('Sonnet');
+        var allModelsText = weeklyText;
+        var sonnetText = '';
+        if (sonnetIdx !== -1) {
+            allModelsText = weeklyText.substring(0, sonnetIdx);
+            sonnetText = weeklyText.substring(sonnetIdx);
+        }
+
+        // Weekly "All models" %: find "XX% used" in all models subsection
+        var wPct = allModelsText.match(/(\d+)%\s*used/);
         if (wPct) result.weekly_pct = parseInt(wPct[1]);
+
+        // Sonnet only %: find "XX% used" in sonnet subsection
+        if (sonnetText) {
+            var sPctSonnet = sonnetText.match(/(\d+)%\s*used/);
+            if (sPctSonnet) result.sonnet_pct = parseInt(sPctSonnet[1]);
+        }
 
         // Session "Resets in" from session section only
         var sReset = sessionText.match(/Resets in\s+(?:(\d+)\s*hr?\s+)?(\d+)\s*min/i);
         if (sReset) {
             result.resets_h = sReset[1] ? parseInt(sReset[1]) : 0;
             result.resets_m = parseInt(sReset[2]);
+        }
+
+        // Weekly "Resets in" from weekly section
+        var wReset = weeklyText.match(/Resets in\s+(?:(\d+)\s*days?\s+)?(?:(\d+)\s*hr?\s+)?(\d+)\s*min/i);
+        if (wReset) {
+            result.weekly_resets_d = wReset[1] ? parseInt(wReset[1]) : 0;
+            result.weekly_resets_h = wReset[2] ? parseInt(wReset[2]) : 0;
+            result.weekly_resets_m = parseInt(wReset[3]);
         }
 
         return JSON.stringify(result);
@@ -270,10 +298,22 @@ final class BrowserScraper {
             throw BrowserScraperError.parseFailure("Could not find 'Resets in' time. Is the page fully loaded?")
         }
 
+        // Sonnet %
+        let sonnetPct = json["sonnet_pct"] as? Int
+
+        // Weekly resets in
+        let wDays = json["weekly_resets_d"] as? Int ?? 0
+        let wHours = json["weekly_resets_h"] as? Int ?? 0
+        let wMinutes = json["weekly_resets_m"] as? Int ?? 0
+        let weeklyResetsTotal = wDays * 86400 + wHours * 3600 + wMinutes * 60
+        let weeklyResetsIn: TimeInterval? = weeklyResetsTotal > 0 ? TimeInterval(weeklyResetsTotal) : nil
+
         return ScrapedUsageData(
             sessionPercent: Double(sessionPct),
             weeklyPercent: Double(weeklyPct),
-            sessionResetsIn: resetsIn
+            sonnetPercent: sonnetPct.map { Double($0) },
+            sessionResetsIn: resetsIn,
+            weeklyResetsIn: weeklyResetsIn
         )
     }
 

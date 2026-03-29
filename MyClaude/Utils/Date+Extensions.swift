@@ -60,9 +60,12 @@ extension TimeInterval {
 
     var compactRemaining: String {
         let total = Int(max(0, self))
-        let hours = total / 3600
+        let days = total / 86400
+        let hours = (total % 86400) / 3600
         let minutes = (total % 3600) / 60
-        if hours > 0 {
+        if days > 0 {
+            return "\(days)d \(hours)h \(minutes)m"
+        } else if hours > 0 {
             return "\(hours)h \(minutes)m"
         } else {
             return "\(minutes)m"

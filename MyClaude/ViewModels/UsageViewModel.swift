@@ -36,6 +36,11 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
     var scrapeError: String?
     var scrapeSuccess: Bool = false
 
+    /// Scraped "Sonnet only" percentage (nil if not available on page)
+    var scrapedSonnetPercent: Double?
+    /// Scraped weekly "Resets in" as TimeInterval (nil if not available)
+    var scrapedWeeklyResetsIn: TimeInterval?
+
     /// Browser scrape interval in seconds. Persisted in UserDefaults.
     var scrapeIntervalSeconds: Int {
         didSet {
@@ -271,6 +276,8 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
                         sessionPercentage: data.sessionPercent,
                         weeklyPercentage: data.weeklyPercent
                     )
+                    self.scrapedSonnetPercent = data.sonnetPercent
+                    self.scrapedWeeklyResetsIn = data.weeklyResetsIn
                     self.isScraping = false
                     self.scrapeSuccess = true
                     // Auto-dismiss success after 3 seconds
@@ -327,6 +334,8 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
                         sessionPercentage: data.sessionPercent,
                         weeklyPercentage: data.weeklyPercent
                     )
+                    self.scrapedSonnetPercent = data.sonnetPercent
+                    self.scrapedWeeklyResetsIn = data.weeklyResetsIn
                     self.isScraping = false
                     self.scrapeError = nil
                 }

@@ -4,12 +4,28 @@ struct StatsView: View {
     let weeklyStats: WeeklyStats
     let todayStats: DailyStats
     let todaySessionCount: Int
-    let estimatedWeeklyPercent: Double?
+    let currentTokens: Int
+    let currentEventCount: Int
+    let hasCalibration: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
+            // Session Usage
+            SectionHeader(title: "Session Usage", icon: "chart.pie")
+
+            StatRow(
+                label: hasCalibration ? "Local Tokens" : "Tokens",
+                value: formatTokens(currentTokens)
+            )
+            StatRow(
+                label: hasCalibration ? "Local Events" : "Events",
+                value: "\(currentEventCount)"
+            )
+
+            Divider()
+
             // Today
-            SectionHeader(title: "Today", icon: "calendar")
+            SectionHeader(title: "Today Local Sessions", icon: "calendar")
 
             StatRow(label: "Tokens", value: formatTokens(todayStats.totalTokens))
             StatRow(label: "Events", value: "\(todayStats.eventCount)")
@@ -18,20 +34,13 @@ struct StatsView: View {
             Divider()
 
             // Weekly
-            SectionHeader(title: "This Week", icon: "chart.bar")
+            SectionHeader(title: "This Week Local Sessions", icon: "chart.bar")
 
-            HStack {
-                StatRow(label: "Total Tokens", value: formatTokens(weeklyStats.totalTokens))
-                if let pct = estimatedWeeklyPercent {
-                    Text("(\(Int(min(pct, 100)))%)")
-                        .font(.caption2)
-                        .foregroundStyle(.blue)
-                }
-            }
+            StatRow(label: "Total Tokens", value: formatTokens(weeklyStats.totalTokens))
             StatRow(label: "Total Events", value: "\(weeklyStats.totalEvents)")
             StatRow(label: "Sessions", value: "\(weeklyStats.totalSessions)")
 
-            // Daily breakdown (Sun to Sat)
+            // Daily breakdown
             if !weeklyStats.dailyBreakdown.isEmpty {
                 Divider()
                 SectionHeader(title: "Daily Breakdown", icon: "list.bullet")

@@ -95,23 +95,18 @@ struct MenuBarView: View {
                 Divider()
             }
 
-            // Section 1: Session
+            // Section 1: Current Session (All)
             sessionSection
 
             Divider()
 
-            // Section 2: Usage (last/current session)
-            usageSection
+            // Section 2: Weekly Limits
+            weeklyLimitsSection
 
             Divider()
 
-            // Section 3: Today + Weekly
-            StatsView(
-                weeklyStats: viewModel.weeklyStats,
-                todayStats: viewModel.todayStats,
-                todaySessionCount: viewModel.todaySessionCount,
-                estimatedWeeklyPercent: viewModel.estimatedWeeklyPercent
-            )
+            // Section 3: Local (session usage, today, this week, daily breakdown)
+            localSection
 
             Divider()
 
@@ -131,7 +126,7 @@ struct MenuBarView: View {
 
     private var sessionSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            SectionHeader(title: "Current Session", icon: "clock")
+            SectionHeader(title: "Current Session (All)", icon: "clock")
 
             if viewModel.isSessionActive {
                 // Active session
@@ -251,46 +246,85 @@ struct MenuBarView: View {
         return "\(minutes)m"
     }
 
-    // MARK: - Usage Section
+    // MARK: - Weekly Limits Section
 
-    private var usageSection: some View {
+    private var weeklyLimitsSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            SectionHeader(
-                title: viewModel.isSessionActive ? "Session Usage" : "Last Session Usage",
-                icon: "chart.pie"
-            )
+            SectionHeader(title: "Weekly Limits", icon: "chart.bar")
 
-            // Show estimated % from calibration prominently
-            if let pct = viewModel.estimatedSessionPercent {
-                HStack {
-                    Text("Estimated")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Text("\(Int(min(pct, 100)))% of limit")
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.blue)
-                }
-            }
-
-            HStack {
-                StatRow(
-                    label: viewModel.calibrationData != nil ? "Local Tokens" : "Tokens",
-                    value: formatTokens(viewModel.currentTokens)
+            // All Models
+            if let weeklyPct = viewModel.estimatedWeeklyPercent {
+                weeklyLimitRow(
+                    label: "All Models",
+                    percent: weeklyPct,
+                    resetsIn: viewModel.scrapedWeeklyResetsIn,
+                    color: weeklyLimitColor(weeklyPct)
                 )
             }
-            StatRow(
-                label: viewModel.calibrationData != nil ? "Local Events" : "Events",
-                value: "\(viewModel.currentEventCount)"
-            )
 
-            if viewModel.calibrationData != nil && viewModel.currentTokens == 0 {
-                Text("No local events in this period yet.\nRe-calibrate to update % from Claude.")
+            // Sonnet only
+            if let sonnetPct = viewModel.scrapedSonnetPercent {
+                weeklyLimitRow(
+                    label: "Sonnet only",
+                    percent: sonnetPct,
+                    resetsIn: viewModel.scrapedWeeklyResetsIn,
+                    color: weeklyLimitColor(sonnetPct)
+                )
+            }
+
+            if viewModel.estimatedWeeklyPercent == nil && viewModel.scrapedSonnetPercent == nil {
+                Text("Waiting for browser scrape data...")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
-                    .fixedSize(horizontal: false, vertical: true)
             }
+        }
+    }
+
+    private func weeklyLimitRow(label: String, percent: Double, resetsIn: TimeInterval?, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(label)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text("\(Int(min(percent, 100)))%")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(color)
+                if let resetsIn = resetsIn {
+                    Text("Resets in \(resetsIn.compactRemaining)")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            ProgressBarView(
+                progress: min(percent / 100.0, 1.0),
+                color: color
+            )
+            .frame(height: 4)
+        }
+    }
+
+    private func weeklyLimitColor(_ percent: Double) -> Color {
+        if percent >= 80 { return .red }
+        if percent >= 60 { return .yellow }
+        return .green
+    }
+
+    // MARK: - Local Section
+
+    private var localSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            SectionHeader(title: "Local", icon: "desktopcomputer")
+
+            StatsView(
+                weeklyStats: viewModel.weeklyStats,
+                todayStats: viewModel.todayStats,
+                todaySessionCount: viewModel.todaySessionCount,
+                currentTokens: viewModel.currentTokens,
+                currentEventCount: viewModel.currentEventCount,
+                hasCalibration: viewModel.calibrationData != nil
+            )
         }
     }
 

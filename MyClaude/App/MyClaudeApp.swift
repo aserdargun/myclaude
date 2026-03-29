@@ -18,7 +18,7 @@ struct MyClaudeApp: App {
             MenuBarView(viewModel: appDelegate.viewModel)
         } label: {
             Text(appDelegate.viewModel.menuBarTitle)
-                .font(.system(size: 11))
+                .font(.system(size: 9))
                 .monospacedDigit()
         }
         .menuBarExtraStyle(.window)

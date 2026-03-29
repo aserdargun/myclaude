@@ -92,13 +92,21 @@ struct MenuBarView: View {
             // Re-calibration reminder
             if viewModel.needsRecalibration {
                 recalibrationBanner
-                Divider()
             }
 
-            // Section 1: Current Session (All)
-            sessionSection
+            // Claude header (centered)
+            HStack {
+                Spacer()
+                Text("Claude")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .textCase(.uppercase)
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
 
-            Divider()
+            // Section 1: Current Session
+            sessionSection
 
             // Section 2: Weekly Limits
             weeklyLimitsSection
@@ -126,7 +134,7 @@ struct MenuBarView: View {
 
     private var sessionSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            SectionHeader(title: "Current Session on Claude", icon: "clock")
+            SectionHeader(title: "Current Session", icon: "clock")
 
             if viewModel.isSessionActive {
                 // Active session
@@ -251,7 +259,7 @@ struct MenuBarView: View {
 
     private var weeklyLimitsSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            SectionHeader(title: "Weekly Limits on Claude", icon: "chart.bar")
+            SectionHeader(title: "Weekly Limits", icon: "chart.bar")
 
             // All Models
             if let weeklyPct = viewModel.estimatedWeeklyPercent {

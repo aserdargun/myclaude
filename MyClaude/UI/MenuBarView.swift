@@ -263,7 +263,8 @@ struct MenuBarView: View {
                     label: "All Models",
                     percent: weeklyPct,
                     reset: viewModel.scrapedAllModelsReset,
-                    color: usageColor(weeklyPct)
+                    color: usageColor(weeklyPct),
+                    showTargets: true
                 )
             }
 
@@ -285,7 +286,7 @@ struct MenuBarView: View {
         }
     }
 
-    private func weeklyLimitRow(label: String, percent: Double, reset: WeeklyResetInfo?, color: Color) -> some View {
+    private func weeklyLimitRow(label: String, percent: Double, reset: WeeklyResetInfo?, color: Color, showTargets: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Text(label)
@@ -302,12 +303,28 @@ struct MenuBarView: View {
                         .foregroundStyle(.tertiary)
                 }
             }
-            ProgressBarView(
-                progress: min(percent / 100.0, 1.0),
-                color: color
-            )
-            .frame(height: 4)
+            if showTargets {
+                ProgressBarView(
+                    progress: min(percent / 100.0, 1.0),
+                    color: color,
+                    dailyTargets: viewModel.dailyTargets,
+                    currentDayIndex: currentSundayBasedDayIndex
+                )
+                .frame(height: 8)
+            } else {
+                ProgressBarView(
+                    progress: min(percent / 100.0, 1.0),
+                    color: color
+                )
+                .frame(height: 4)
+            }
         }
+    }
+
+    /// Current day index where Sunday=0, Saturday=6
+    private var currentSundayBasedDayIndex: Int {
+        let weekday = Calendar.current.component(.weekday, from: Date())
+        return weekday - 1  // Calendar weekday: 1=Sun, 2=Mon, ..., 7=Sat → 0-6
     }
 
     private func resetDisplayText(_ reset: WeeklyResetInfo) -> String {

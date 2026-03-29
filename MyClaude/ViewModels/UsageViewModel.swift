@@ -54,6 +54,16 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         }
     }
 
+    /// Daily target percentages for weekly limits (Sun–Sat). Must sum to 100.
+    var dailyTargets: [Int] {
+        didSet {
+            UserDefaults.standard.set(dailyTargets, forKey: "dailyTargets")
+        }
+    }
+
+    /// Default daily targets: Sun=15, Mon=10, Tue=15, Wed=15, Thu=10, Fri=15, Sat=20
+    static let defaultDailyTargets = [15, 10, 15, 15, 10, 15, 20]
+
     // MARK: - Calibration state
 
     /// Tracks which 5h period was active at last calibration, to detect period changes.
@@ -147,6 +157,11 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         let saved = UserDefaults.standard.integer(forKey: "scrapeIntervalSeconds")
         self.scrapeIntervalSeconds = saved > 0 ? saved : 300
         self.scrapeSourceURL = UserDefaults.standard.string(forKey: "scrapeSourceURL") ?? Constants.claudeUsageURL
+        if let saved = UserDefaults.standard.array(forKey: "dailyTargets") as? [Int], saved.count == 7 {
+            self.dailyTargets = saved
+        } else {
+            self.dailyTargets = UsageViewModel.defaultDailyTargets
+        }
         super.init()
 
         logReader.delegate = self

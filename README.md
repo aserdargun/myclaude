@@ -33,7 +33,8 @@ A macOS menu bar app that tracks Claude Code CLI usage with real-time session co
 
 - macOS 14.0+ (Sonoma)
 - Swift 5.10+
-- Google Chrome or Safari (for browser scraping)
+- Google Chrome (for browser scraping)
+- An active [Claude Code](https://docs.anthropic.com/en/docs/claude-code) subscription — you must be logged in to `claude.ai` in Chrome
 
 ## Build & Run
 
@@ -90,8 +91,24 @@ Accessible via the gear icon in the dropdown:
 - **Source URL** — browser page to scrape (default: `https://claude.ai/settings/usage`)
 - **Auto-refresh** — scrape interval in seconds (default: 300)
 
-## Permissions
+## Setup
+
+### 1. Enable JavaScript from Apple Events in Chrome
+
+myClaude reads usage data from your browser via AppleScript. This requires a Chrome developer setting:
+
+1. Open Google Chrome
+2. Go to **View → Developer → Allow JavaScript from Apple Events**
+3. Confirm the prompt
+
+> This setting must be re-enabled after each Chrome update.
+
+### 2. Log in to Claude
+
+Open `https://claude.ai/settings/usage` in Chrome and make sure you are logged in. myClaude scrapes this page to read your session and weekly usage percentages.
+
+### 3. Grant Automation Permission
 
 On first launch, macOS will prompt for:
 
-- **Automation** — allow myClaude to read browser tabs (System Settings → Privacy → Automation)
+- **Automation** — allow myClaude to control Google Chrome (System Settings → Privacy & Security → Automation)

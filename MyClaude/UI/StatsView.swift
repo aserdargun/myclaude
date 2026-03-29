@@ -11,7 +11,7 @@ struct StatsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // Session Usage
-            centeredHeader("Session Usage", icon: "chart.pie")
+            localHeader("Session Usage", icon: "chart.pie")
 
             StatRow(
                 label: hasCalibration ? "Local Tokens" : "Tokens",
@@ -23,14 +23,14 @@ struct StatsView: View {
             )
 
             // Today
-            centeredHeader("Today", icon: "calendar")
+            localHeader("Today", icon: "calendar")
 
             StatRow(label: "Tokens", value: formatTokens(todayStats.totalTokens))
             StatRow(label: "Events", value: "\(todayStats.eventCount)")
             StatRow(label: "Sessions", value: "\(todaySessionCount)")
 
             // Weekly
-            centeredHeader("This Week", icon: "chart.bar")
+            localHeader("This Week", icon: "chart.bar")
 
             StatRow(label: "Total Tokens", value: formatTokens(weeklyStats.totalTokens))
             StatRow(label: "Total Events", value: "\(weeklyStats.totalEvents)")
@@ -38,7 +38,7 @@ struct StatsView: View {
 
             // Daily breakdown
             if !weeklyStats.dailyBreakdown.isEmpty {
-                centeredHeader("Daily Breakdown", icon: "list.bullet")
+                localHeader("Daily Breakdown", icon: "list.bullet")
 
                 ForEach(weeklyStats.dailyBreakdown) { day in
                     HStack(spacing: 4) {
@@ -67,19 +67,15 @@ struct StatsView: View {
         }
     }
 
-    private func centeredHeader(_ title: String, icon: String) -> some View {
-        HStack {
-            Spacer()
-            HStack(spacing: 4) {
-                Image(systemName: icon)
-                    .font(.caption2)
-                Text(title)
-                    .font(.caption)
-                    .fontWeight(.semibold)
-            }
-            .foregroundStyle(.secondary)
-            Spacer()
+    private func localHeader(_ title: String, icon: String) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.caption2)
+            Text(title)
+                .font(.caption)
+                .fontWeight(.semibold)
         }
+        .foregroundStyle(.secondary)
     }
 
     private func formatTokens(_ count: Int) -> String {

@@ -316,7 +316,11 @@ struct MenuBarView: View {
 
     private var localSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            SectionHeader(title: "Local", icon: "desktopcomputer")
+            HStack {
+                Spacer()
+                SectionHeader(title: "Local", icon: "desktopcomputer")
+                Spacer()
+            }
 
             StatsView(
                 weeklyStats: viewModel.weeklyStats,

@@ -6,6 +6,10 @@
 
 A macOS menu bar app that tracks Claude Code CLI usage with real-time session countdowns, weekly limits, and automated browser scraping from claude.ai.
 
+<p align="center">
+  <video src="https://github.com/aserdargun/myclaude/raw/claude/macos-menu-bar-app-e8nEs/myClaude_demo.mov" width="600" autoplay loop muted></video>
+</p>
+
 ## Features
 
 - **Color-coded menu bar** — `250m-50%-4%` with per-segment coloring (green/yellow/red)

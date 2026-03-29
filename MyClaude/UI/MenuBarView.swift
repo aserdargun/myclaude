@@ -126,7 +126,7 @@ struct MenuBarView: View {
 
     private var sessionSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            SectionHeader(title: "Current Session (All)", icon: "clock")
+            SectionHeader(title: "Current Session on Claude", icon: "clock")
 
             if viewModel.isSessionActive {
                 // Active session
@@ -138,8 +138,9 @@ struct MenuBarView: View {
                     Spacer()
                     VStack(alignment: .trailing, spacing: 2) {
                         Text(viewModel.sessionPercentDisplay)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .font(.title3)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(viewModel.statusColor)
                         if let cal = viewModel.calibrationData {
                             Text("Scraped \(cal.calibratedAt.shortTimeString)")
                                 .font(.caption2)

@@ -22,19 +22,15 @@ struct StatsView: View {
                 value: "\(currentEventCount)"
             )
 
-            Divider()
-
             // Today
-            SectionHeader(title: "Today Local Sessions", icon: "calendar")
+            SectionHeader(title: "Today", icon: "calendar")
 
             StatRow(label: "Tokens", value: formatTokens(todayStats.totalTokens))
             StatRow(label: "Events", value: "\(todayStats.eventCount)")
             StatRow(label: "Sessions", value: "\(todaySessionCount)")
 
-            Divider()
-
             // Weekly
-            SectionHeader(title: "This Week Local Sessions", icon: "chart.bar")
+            SectionHeader(title: "This Week", icon: "chart.bar")
 
             StatRow(label: "Total Tokens", value: formatTokens(weeklyStats.totalTokens))
             StatRow(label: "Total Events", value: "\(weeklyStats.totalEvents)")
@@ -42,7 +38,6 @@ struct StatsView: View {
 
             // Daily breakdown
             if !weeklyStats.dailyBreakdown.isEmpty {
-                Divider()
                 SectionHeader(title: "Daily Breakdown", icon: "list.bullet")
 
                 ForEach(weeklyStats.dailyBreakdown) { day in

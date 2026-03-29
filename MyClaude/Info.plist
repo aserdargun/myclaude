@@ -22,5 +22,7 @@
     <string>myClaude needs to read your Claude usage percentage from your browser to auto-calibrate.</string>
     <key>NSHumanReadableCopyright</key>
     <string>Copyright 2025. All rights reserved.</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
 </dict>
 </plist>

@@ -152,13 +152,13 @@ final class BrowserScraper {
     /// Scrape Claude usage data from an open browser tab.
     /// If Chrome is not running or has no claude.ai/settings tab,
     /// opens Chrome with the settings page and waits for it to load.
-    func scrape(url: String = Constants.claudeUsageURL) async throws -> ScrapedUsageData {
+    func scrape(url: String = Constants.claudeUsageURL, reload: Bool = false) async throws -> ScrapedUsageData {
         let searchDomain = extractDomain(from: url)
 
         // Try Chrome first
         if isAppRunning("Google Chrome") {
             do {
-                return try await scrapeFromChrome(matching: searchDomain)
+                return try await scrapeFromChrome(matching: searchDomain, reload: reload)
             } catch BrowserScraperError.permissionDenied {
                 throw BrowserScraperError.permissionDenied("Google Chrome")
             } catch BrowserScraperError.noClaudeSettingsTab {
@@ -216,7 +216,34 @@ final class BrowserScraper {
 
     // MARK: - Chrome
 
-    private func scrapeFromChrome(matching domain: String) async throws -> ScrapedUsageData {
+    private func scrapeFromChrome(matching domain: String, reload: Bool = false) async throws -> ScrapedUsageData {
+        // Optionally reload the tab first to get fresh data
+        if reload {
+            let reloadJxa = """
+            (function() {
+                var chrome = Application('Google Chrome');
+                var windows = chrome.windows();
+                for (var i = 0; i < windows.length; i++) {
+                    var tabs = windows[i].tabs();
+                    for (var j = 0; j < tabs.length; j++) {
+                        var url = tabs[j].url();
+                        if (url && url.indexOf('\(domain)') !== -1) {
+                            tabs[j].reload();
+                            return 'OK';
+                        }
+                    }
+                }
+                return '__NO_TAB__';
+            })()
+            """
+            let result = try await runOsascript(language: "JavaScript", script: reloadJxa)
+            if result.contains("__NO_TAB__") {
+                throw BrowserScraperError.noClaudeSettingsTab
+            }
+            // Wait for the page to reload
+            try await Task.sleep(nanoseconds: 3_000_000_000)
+        }
+
         let jxa = """
         (function() {
             var chrome = Application('Google Chrome');

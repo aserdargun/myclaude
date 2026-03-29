@@ -257,7 +257,7 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
 
         Task {
             do {
-                let data = try await browserScraper.scrape(url: self.scrapeSourceURL)
+                let data = try await browserScraper.scrape(url: self.scrapeSourceURL, reload: true)
                 // Compute session start: now + resetsIn - 5 hours
                 let sessionStart = Date().addingTimeInterval(
                     data.sessionResetsIn - Constants.sessionDuration

@@ -1,5 +1,9 @@
 # myClaude - macOS Menu Bar Usage Tracker
 
+<p align="center">
+  <img src="MyClaude/Resources/Assets.xcassets/AppIcon.appiconset/icon_256x256.png" width="128" height="128" alt="myClaude icon">
+</p>
+
 A macOS menu bar app that tracks Claude Code CLI usage with real-time session countdowns, weekly limits, and automated browser scraping from claude.ai.
 
 ## Features

@@ -5,13 +5,9 @@ struct MenuBarView: View {
 
     var body: some View {
         if viewModel.showSettings {
-            ScrollView {
-                SettingsView(viewModel: viewModel)
-            }
+            SettingsView(viewModel: viewModel)
         } else {
-            ScrollView {
-                mainView
-            }
+            mainView
         }
     }
 
@@ -259,83 +255,80 @@ struct MenuBarView: View {
 
     private var weeklyLimitsSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Header with weekly percentage right-aligned
-            HStack {
+            // Header with All Models % right-aligned (bigger) and reset below
+            HStack(alignment: .top) {
                 SectionHeader(title: "Weekly Limits", icon: "chart.bar")
                 Spacer()
                 if let weeklyPct = viewModel.estimatedWeeklyPercent {
-                    Text("\(Int(min(weeklyPct, 100)))%")
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(usageColor(weeklyPct))
-                }
-                if let reset = viewModel.scrapedAllModelsReset {
-                    Text(resetDisplayText(reset))
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text("\(Int(min(weeklyPct, 100)))%")
+                            .font(.title3)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(usageColor(weeklyPct))
+                        if let reset = viewModel.scrapedAllModelsReset {
+                            Text(resetDisplayText(reset))
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
                 }
             }
 
-            // All Models
+            // All Models progress bar with targets
             if let weeklyPct = viewModel.estimatedWeeklyPercent {
-                weeklyLimitRow(
-                    label: "All Models",
-                    percent: weeklyPct,
-                    color: usageColor(weeklyPct),
-                    showTargets: true
-                )
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text("All Models")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                    }
+                    VStack(spacing: 0) {
+                        ProgressBarView(
+                            progress: min(weeklyPct / 100.0, 1.0),
+                            color: usageColor(weeklyPct),
+                            dailyTargets: viewModel.dailyTargets,
+                            currentDayIndex: currentSundayBasedDayIndex
+                        )
+                        .frame(height: 8)
+
+                        targetLabelsRow
+                    }
+                }
             }
 
-            // Sonnet only
+            // Sonnet only with % right-aligned above reset text
             if let sonnetPct = viewModel.scrapedSonnetPercent {
-                weeklyLimitRow(
-                    label: "Sonnet only",
-                    percent: sonnetPct,
-                    reset: viewModel.scrapedSonnetReset,
-                    color: usageColor(sonnetPct)
-                )
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(alignment: .top) {
+                        Text("Sonnet only")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        VStack(alignment: .trailing, spacing: 2) {
+                            Text("\(Int(min(sonnetPct, 100)))%")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(usageColor(sonnetPct))
+                            if let reset = viewModel.scrapedSonnetReset {
+                                Text(resetDisplayText(reset))
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                    }
+                    ProgressBarView(
+                        progress: min(sonnetPct / 100.0, 1.0),
+                        color: usageColor(sonnetPct)
+                    )
+                    .frame(height: 4)
+                }
             }
 
             if viewModel.estimatedWeeklyPercent == nil && viewModel.scrapedSonnetPercent == nil {
                 Text("Waiting for browser scrape data...")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
-            }
-        }
-    }
-
-    private func weeklyLimitRow(label: String, percent: Double, reset: WeeklyResetInfo? = nil, color: Color, showTargets: Bool = false) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(label)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Spacer()
-                if let reset = reset {
-                    Text(resetDisplayText(reset))
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                }
-            }
-            if showTargets {
-                VStack(spacing: 0) {
-                    ProgressBarView(
-                        progress: min(percent / 100.0, 1.0),
-                        color: color,
-                        dailyTargets: viewModel.dailyTargets,
-                        currentDayIndex: currentSundayBasedDayIndex
-                    )
-                    .frame(height: 8)
-
-                    // Target % labels below vertical lines
-                    targetLabelsRow
-                }
-            } else {
-                ProgressBarView(
-                    progress: min(percent / 100.0, 1.0),
-                    color: color
-                )
-                .frame(height: 4)
             }
         }
     }

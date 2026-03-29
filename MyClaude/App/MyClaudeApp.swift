@@ -83,6 +83,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     private func showPanel() {
         guard let panel,
+              let hostingView,
               let button = statusItem.button,
               let buttonWindow = button.window else { return }
 
@@ -91,7 +92,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let screenRect = buttonWindow.convertToScreen(buttonRect)
 
         let panelWidth: CGFloat = 340
-        let panelHeight: CGFloat = 680
+        // Compute intrinsic height from SwiftUI content
+        let fittingSize = hostingView.fittingSize
+        let panelHeight = min(max(fittingSize.height, 300), 800)
         let x = screenRect.midX - panelWidth / 2
         let y = screenRect.minY - panelHeight
 

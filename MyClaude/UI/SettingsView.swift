@@ -79,19 +79,9 @@ struct SettingsView: View {
     private static let dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 
     private var dailyTargetsGrid: some View {
-        VStack(spacing: 6) {
-            // Row 1: Sun–Wed
-            HStack(spacing: 8) {
-                ForEach(0..<4, id: \.self) { i in
-                    dayTargetField(index: i)
-                }
-            }
-            // Row 2: Thu–Sat
-            HStack(spacing: 8) {
-                ForEach(4..<7, id: \.self) { i in
-                    dayTargetField(index: i)
-                }
-                Spacer()
+        HStack(spacing: 4) {
+            ForEach(0..<7, id: \.self) { i in
+                dayTargetField(index: i)
             }
         }
     }
@@ -99,7 +89,7 @@ struct SettingsView: View {
     private func dayTargetField(index: Int) -> some View {
         VStack(spacing: 2) {
             Text(Self.dayNames[index])
-                .font(.caption2)
+                .font(.system(size: 9))
                 .foregroundStyle(.secondary)
             TextField("", value: Binding(
                 get: { viewModel.dailyTargets[index] },
@@ -110,12 +100,9 @@ struct SettingsView: View {
                 }
             ), format: .number)
                 .textFieldStyle(.roundedBorder)
-                .frame(width: 40)
+                .frame(width: 36)
                 .font(.caption)
                 .multilineTextAlignment(.center)
-            Text("%")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
         }
     }
 }

@@ -259,14 +259,28 @@ struct MenuBarView: View {
 
     private var weeklyLimitsSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            SectionHeader(title: "Weekly Limits", icon: "chart.bar")
+            // Header with weekly percentage right-aligned
+            HStack {
+                SectionHeader(title: "Weekly Limits", icon: "chart.bar")
+                Spacer()
+                if let weeklyPct = viewModel.estimatedWeeklyPercent {
+                    Text("\(Int(min(weeklyPct, 100)))%")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(usageColor(weeklyPct))
+                }
+                if let reset = viewModel.scrapedAllModelsReset {
+                    Text(resetDisplayText(reset))
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+            }
 
             // All Models
             if let weeklyPct = viewModel.estimatedWeeklyPercent {
                 weeklyLimitRow(
                     label: "All Models",
                     percent: weeklyPct,
-                    reset: viewModel.scrapedAllModelsReset,
                     color: usageColor(weeklyPct),
                     showTargets: true
                 )
@@ -290,17 +304,13 @@ struct MenuBarView: View {
         }
     }
 
-    private func weeklyLimitRow(label: String, percent: Double, reset: WeeklyResetInfo?, color: Color, showTargets: Bool = false) -> some View {
+    private func weeklyLimitRow(label: String, percent: Double, reset: WeeklyResetInfo? = nil, color: Color, showTargets: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Text(label)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
-                Text("\(Int(min(percent, 100)))%")
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(color)
                 if let reset = reset {
                     Text(resetDisplayText(reset))
                         .font(.caption2)
@@ -308,13 +318,18 @@ struct MenuBarView: View {
                 }
             }
             if showTargets {
-                ProgressBarView(
-                    progress: min(percent / 100.0, 1.0),
-                    color: color,
-                    dailyTargets: viewModel.dailyTargets,
-                    currentDayIndex: currentSundayBasedDayIndex
-                )
-                .frame(height: 8)
+                VStack(spacing: 0) {
+                    ProgressBarView(
+                        progress: min(percent / 100.0, 1.0),
+                        color: color,
+                        dailyTargets: viewModel.dailyTargets,
+                        currentDayIndex: currentSundayBasedDayIndex
+                    )
+                    .frame(height: 8)
+
+                    // Target % labels below vertical lines
+                    targetLabelsRow
+                }
             } else {
                 ProgressBarView(
                     progress: min(percent / 100.0, 1.0),
@@ -323,6 +338,24 @@ struct MenuBarView: View {
                 .frame(height: 4)
             }
         }
+    }
+
+    /// Labels showing cumulative target % below each vertical marker
+    private var targetLabelsRow: some View {
+        GeometryReader { geometry in
+            let targets = viewModel.dailyTargets
+            let dayIndex = currentSundayBasedDayIndex
+            ForEach(0..<targets.count - 1, id: \.self) { i in
+                let cumulative = targets.prefix(i + 1).reduce(0, +)
+                let xPos = geometry.size.width * Double(cumulative) / 100.0
+                let isCurrentDay = (i == dayIndex)
+                Text("\(cumulative)")
+                    .font(.system(size: 7))
+                    .foregroundStyle(isCurrentDay ? .red : .secondary)
+                    .position(x: xPos, y: geometry.size.height / 2)
+            }
+        }
+        .frame(height: 12)
     }
 
     /// Current day index where Sunday=0, Saturday=6

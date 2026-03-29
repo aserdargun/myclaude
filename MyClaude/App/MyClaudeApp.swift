@@ -11,7 +11,7 @@ private class MenuBarPanel: NSPanel {
     init(contentRect: NSRect) {
         super.init(
             contentRect: contentRect,
-            styleMask: [.nonactivatingPanel, .titled, .fullSizeContentView],
+            styleMask: [.nonactivatingPanel, .hudWindow, .utilityWindow, .titled, .closable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
@@ -22,7 +22,8 @@ private class MenuBarPanel: NSPanel {
         isMovableByWindowBackground = false
         isReleasedWhenClosed = false
         hidesOnDeactivate = true
-        backgroundColor = .clear
+        isOpaque = false
+        backgroundColor = NSColor.windowBackgroundColor
     }
 }
 

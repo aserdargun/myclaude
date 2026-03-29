@@ -11,30 +11,27 @@ private class MenuBarPanel: NSPanel {
     init(contentRect: NSRect) {
         super.init(
             contentRect: contentRect,
-            styleMask: [.nonactivatingPanel, .hudWindow, .utilityWindow, .titled, .closable, .fullSizeContentView],
+            styleMask: [.nonactivatingPanel, .fullSizeContentView, .borderless],
             backing: .buffered,
             defer: false
         )
         isFloatingPanel = true
         level = .statusBar
-        titleVisibility = .hidden
-        titlebarAppearsTransparent = true
         isMovableByWindowBackground = false
         isReleasedWhenClosed = false
-        hidesOnDeactivate = true
+        hasShadow = true
         isOpaque = false
         backgroundColor = NSColor.windowBackgroundColor
     }
 }
 
 @main
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private let viewModel = UsageViewModel()
     private var statusItem: NSStatusItem!
     private var panel: MenuBarPanel?
     private var hostingView: NSHostingView<MenuBarView>?
     private var updateTimer: Timer?
-    private var eventMonitor: Any?
 
     static func main() {
         let app = NSApplication.shared
@@ -57,6 +54,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Create panel with SwiftUI content
         panel = MenuBarPanel(contentRect: NSRect(x: 0, y: 0, width: 340, height: 500))
+        panel?.delegate = self
         hostingView = NSHostingView(rootView: MenuBarView(viewModel: viewModel))
         panel?.contentView = hostingView
 
@@ -103,29 +101,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
 
         panel.makeKeyAndOrderFront(nil)
-
-        // Start monitoring for outside clicks to close
-        startEventMonitor()
     }
 
     private func closePanel() {
         panel?.orderOut(nil)
-        stopEventMonitor()
     }
 
-    private func startEventMonitor() {
-        stopEventMonitor()
-        eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
-            guard let self, let panel = self.panel, panel.isVisible else { return }
-            self.closePanel()
-        }
-    }
+    // MARK: - NSWindowDelegate
 
-    private func stopEventMonitor() {
-        if let monitor = eventMonitor {
-            NSEvent.removeMonitor(monitor)
-            eventMonitor = nil
-        }
+    func windowDidResignKey(_ notification: Notification) {
+        closePanel()
     }
 
     @objc private func updateMenuBarTitle() {

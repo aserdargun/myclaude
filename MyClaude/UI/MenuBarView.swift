@@ -141,9 +141,16 @@ struct MenuBarView: View {
                         .fontWeight(.semibold)
                         .foregroundStyle(viewModel.statusColor)
                     Spacer()
-                    Text(viewModel.sessionPercentDisplay)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text(viewModel.sessionPercentDisplay)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        if let cal = viewModel.calibrationData {
+                            Text("Scraped \(cal.calibratedAt.shortTimeString)")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
                 }
 
                 ProgressBarView(
@@ -302,7 +309,7 @@ struct MenuBarView: View {
             StatRow(label: "Sessions detected", value: "\(viewModel.todaySessionCount)")
 
             if viewModel.calibrationData != nil {
-                StatRow(label: "Calibration", value: calibrationAgeText + " ago")
+                StatRow(label: "Updated", value: calibrationAgeText + " ago")
             }
         }
     }

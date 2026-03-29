@@ -146,17 +146,6 @@ struct SettingsView: View {
                 Text("sec")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
-
-                Spacer()
-
-                Button {
-                    viewModel.restartScrapeTimer()
-                } label: {
-                    Text("Save")
-                        .font(.caption)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
             }
         }
     }

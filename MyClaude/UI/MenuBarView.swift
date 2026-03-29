@@ -122,11 +122,6 @@ struct MenuBarView: View {
 
             Divider()
 
-            // Section 4: Debug
-            debugSection
-
-            Divider()
-
             // Actions
             actionsSection
         }
@@ -154,7 +149,7 @@ struct MenuBarView: View {
                             .fontWeight(.semibold)
                             .foregroundStyle(viewModel.statusColor)
                         if let cal = viewModel.calibrationData {
-                            Text("Scraped \(cal.calibratedAt.shortTimeString)")
+                            Text("Updated \(cal.calibratedAt.shortTimeString)")
                                 .font(.caption2)
                                 .foregroundStyle(.tertiary)
                         }
@@ -351,26 +346,6 @@ struct MenuBarView: View {
                 currentEventCount: viewModel.currentEventCount,
                 hasCalibration: viewModel.calibrationData != nil
             )
-        }
-    }
-
-    // MARK: - Debug Section
-
-    private var debugSection: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            SectionHeader(title: "Debug", icon: "ant")
-
-            if let lastRead = viewModel.lastLogRead {
-                StatRow(label: "Last log read", value: lastRead.shortTimeString)
-            } else {
-                StatRow(label: "Last log read", value: "Never")
-            }
-            StatRow(label: "Events parsed", value: "\(viewModel.totalEventsRead)")
-            StatRow(label: "Sessions detected", value: "\(viewModel.todaySessionCount)")
-
-            if viewModel.calibrationData != nil {
-                StatRow(label: "Updated", value: calibrationAgeText + " ago")
-            }
         }
     }
 

@@ -91,7 +91,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let screenRect = buttonWindow.convertToScreen(buttonRect)
 
         let panelWidth: CGFloat = 340
-        let panelHeight: CGFloat = 620
+        let panelHeight: CGFloat = 680
         let x = screenRect.midX - panelWidth / 2
         let y = screenRect.minY - panelHeight
 

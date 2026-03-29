@@ -5,9 +5,13 @@ struct MenuBarView: View {
 
     var body: some View {
         if viewModel.showSettings {
-            SettingsView(viewModel: viewModel)
+            ScrollView {
+                SettingsView(viewModel: viewModel)
+            }
         } else {
-            mainView
+            ScrollView {
+                mainView
+            }
         }
     }
 

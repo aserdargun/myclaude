@@ -30,8 +30,8 @@ private class MenuBarPanel: NSPanel {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let viewModel = UsageViewModel()
     private var statusItem: NSStatusItem!
-    private var panel: MenuBarPanel!
-    private var hostingView: NSHostingView<MenuBarView>!
+    private var panel: MenuBarPanel?
+    private var hostingView: NSHostingView<MenuBarView>?
     private var updateTimer: Timer?
     private var eventMonitor: Any?
 
@@ -78,6 +78,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func togglePanel() {
+        guard let panel else { return }
         if panel.isVisible {
             closePanel()
         } else {
@@ -86,7 +87,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func showPanel() {
-        guard let button = statusItem.button,
+        guard let panel, let hostingView,
+              let button = statusItem.button,
               let buttonWindow = button.window else { return }
 
         // Position panel below the status item
@@ -110,7 +112,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func closePanel() {
-        panel.orderOut(nil)
+        panel?.orderOut(nil)
     }
 
     @objc private func updateMenuBarTitle() {
@@ -189,7 +191,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         // Resize panel if visible to fit updated content
-        if panel.isVisible {
+        if let panel, let hostingView, panel.isVisible {
             let fittingSize = hostingView.fittingSize
             let panelHeight = min(fittingSize.height, 700)
             var frame = panel.frame

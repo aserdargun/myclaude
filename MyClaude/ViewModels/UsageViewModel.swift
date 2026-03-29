@@ -160,7 +160,7 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         self.storage = storage
         self.calibrationManager = CalibrationManager(storage: storage)
         let saved = UserDefaults.standard.integer(forKey: "scrapeIntervalSeconds")
-        self.scrapeIntervalSeconds = saved > 0 ? saved : 5
+        self.scrapeIntervalSeconds = saved > 0 ? saved : 300
         self.scrapeSourceURL = UserDefaults.standard.string(forKey: "scrapeSourceURL") ?? Constants.claudeUsageURL
         super.init()
 

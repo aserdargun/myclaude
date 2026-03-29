@@ -19,20 +19,53 @@ struct MenuBarView: View {
                 Text("myClaude")
                     .font(.headline)
                     .fontWeight(.bold)
+
                 Spacer()
+
+                // Scrape status in title bar
+                if viewModel.isScraping || viewModel.isRefreshing {
+                    HStack(spacing: 4) {
+                        ProgressView()
+                            .controlSize(.mini)
+                        Text("Updating...")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                } else if let error = viewModel.scrapeError {
+                    HStack(spacing: 4) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.red)
+                        Text(error)
+                            .font(.caption2)
+                            .foregroundStyle(.red)
+                            .lineLimit(1)
+                        Button {
+                            viewModel.scrapeError = nil
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.caption2)
+                        }
+                        .buttonStyle(.borderless)
+                    }
+                } else if viewModel.scrapeSuccess {
+                    HStack(spacing: 4) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.green)
+                        Text("Updated")
+                            .font(.caption2)
+                            .foregroundStyle(.green)
+                    }
+                }
 
                 Button {
                     viewModel.forceRefresh()
                     viewModel.scrapeAndCalibrate()
                 } label: {
-                    if viewModel.isScraping || viewModel.isRefreshing {
-                        ProgressView()
-                            .controlSize(.mini)
-                    } else {
-                        Image(systemName: "globe")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+                    Image(systemName: "globe")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.borderless)
                 .help("Auto-refresh and scrape")
@@ -53,42 +86,6 @@ struct MenuBarView: View {
                     .frame(width: 10, height: 10)
             }
             .padding(.bottom, 4)
-
-            // Browser scrape feedback
-            if let error = viewModel.scrapeError {
-                HStack(spacing: 4) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.caption2)
-                        .foregroundStyle(.red)
-                    Text(error)
-                        .font(.caption2)
-                        .foregroundStyle(.red)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Spacer()
-                    Button {
-                        viewModel.scrapeError = nil
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.caption2)
-                    }
-                    .buttonStyle(.borderless)
-                }
-                .padding(6)
-                .background(RoundedRectangle(cornerRadius: 6).fill(Color.red.opacity(0.1)))
-            }
-
-            if viewModel.scrapeSuccess {
-                HStack(spacing: 4) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.caption2)
-                        .foregroundStyle(.green)
-                    Text("Scraped from browser")
-                        .font(.caption2)
-                        .foregroundStyle(.green)
-                }
-                .padding(6)
-                .background(RoundedRectangle(cornerRadius: 6).fill(Color.green.opacity(0.1)))
-            }
 
             // Re-calibration reminder
             if viewModel.needsRecalibration {

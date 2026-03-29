@@ -70,6 +70,17 @@ struct SettingsView: View {
                 }
 
                 dailyTargetsGrid
+
+                if viewModel.dailyTargets.reduce(0, +) > 100 {
+                    HStack(spacing: 4) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.orange)
+                        Text("Daily targets exceed 100%. Please adjust values.")
+                            .font(.caption2)
+                            .foregroundStyle(.orange)
+                    }
+                }
             }
         }
         .padding(12)

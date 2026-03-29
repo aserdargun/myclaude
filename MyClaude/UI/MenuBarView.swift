@@ -142,7 +142,7 @@ struct MenuBarView: View {
                     Spacer()
                     VStack(alignment: .trailing, spacing: 2) {
                         Text(viewModel.sessionPercentDisplay)
-                            .font(.title3)
+                            .font(.title2)
                             .fontWeight(.semibold)
                             .foregroundStyle(sessionPercentColor)
                         if let cal = viewModel.calibrationData {
@@ -307,7 +307,7 @@ struct MenuBarView: View {
                         Spacer()
                         VStack(alignment: .trailing, spacing: 2) {
                             Text("\(Int(min(sonnetPct, 100)))%")
-                                .font(.caption)
+                                .font(.callout)
                                 .fontWeight(.semibold)
                                 .foregroundStyle(usageColor(sonnetPct))
                             if let reset = viewModel.scrapedSonnetReset {

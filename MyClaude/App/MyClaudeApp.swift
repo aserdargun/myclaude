@@ -57,7 +57,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Create panel with SwiftUI content
         panel = MenuBarPanel(contentRect: NSRect(x: 0, y: 0, width: 340, height: 500))
         hostingView = NSHostingView(rootView: MenuBarView(viewModel: viewModel))
-        panel.contentView = hostingView
+        panel?.contentView = hostingView
 
         // Start view model
         viewModel.start()

@@ -255,22 +255,15 @@ struct MenuBarView: View {
 
     private var weeklyLimitsSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Header with All Models % right-aligned (bigger) and reset below
+            // Header with All Models % right-aligned
             HStack(alignment: .top) {
                 SectionHeader(title: "Weekly Limits", icon: "chart.bar")
                 Spacer()
                 if let weeklyPct = viewModel.estimatedWeeklyPercent {
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text("\(Int(min(weeklyPct, 100)))%")
-                            .font(.title3)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(usageColor(weeklyPct))
-                        if let reset = viewModel.scrapedAllModelsReset {
-                            Text(resetDisplayText(reset))
-                                .font(.caption2)
-                                .foregroundStyle(.tertiary)
-                        }
-                    }
+                    Text("\(Int(min(weeklyPct, 100)))%")
+                        .font(.title3)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(usageColor(weeklyPct))
                 }
             }
 
@@ -282,6 +275,11 @@ struct MenuBarView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                         Spacer()
+                        if let reset = viewModel.scrapedAllModelsReset {
+                            Text(resetDisplayText(reset))
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
                     }
                     VStack(spacing: 0) {
                         ProgressBarView(

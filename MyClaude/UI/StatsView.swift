@@ -11,7 +11,7 @@ struct StatsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // Session Usage
-            SectionHeader(title: "Session Usage", icon: "chart.pie")
+            centeredHeader("Session Usage", icon: "chart.pie")
 
             StatRow(
                 label: hasCalibration ? "Local Tokens" : "Tokens",
@@ -23,14 +23,14 @@ struct StatsView: View {
             )
 
             // Today
-            SectionHeader(title: "Today", icon: "calendar")
+            centeredHeader("Today", icon: "calendar")
 
             StatRow(label: "Tokens", value: formatTokens(todayStats.totalTokens))
             StatRow(label: "Events", value: "\(todayStats.eventCount)")
             StatRow(label: "Sessions", value: "\(todaySessionCount)")
 
             // Weekly
-            SectionHeader(title: "This Week", icon: "chart.bar")
+            centeredHeader("This Week", icon: "chart.bar")
 
             StatRow(label: "Total Tokens", value: formatTokens(weeklyStats.totalTokens))
             StatRow(label: "Total Events", value: "\(weeklyStats.totalEvents)")
@@ -38,7 +38,7 @@ struct StatsView: View {
 
             // Daily breakdown
             if !weeklyStats.dailyBreakdown.isEmpty {
-                SectionHeader(title: "Daily Breakdown", icon: "list.bullet")
+                centeredHeader("Daily Breakdown", icon: "list.bullet")
 
                 ForEach(weeklyStats.dailyBreakdown) { day in
                     HStack(spacing: 4) {
@@ -64,6 +64,21 @@ struct StatsView: View {
                     }
                 }
             }
+        }
+    }
+
+    private func centeredHeader(_ title: String, icon: String) -> some View {
+        HStack {
+            Spacer()
+            HStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.caption2)
+                Text(title)
+                    .font(.caption)
+                    .fontWeight(.semibold)
+            }
+            .foregroundStyle(.secondary)
+            Spacer()
         }
     }
 

@@ -251,7 +251,7 @@ struct MenuBarView: View {
 
     private var weeklyLimitsSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            SectionHeader(title: "Weekly Limits", icon: "chart.bar")
+            SectionHeader(title: "Weekly Limits on Claude", icon: "chart.bar")
 
             // All Models
             if let weeklyPct = viewModel.estimatedWeeklyPercent {

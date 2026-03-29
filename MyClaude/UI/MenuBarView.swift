@@ -258,7 +258,7 @@ struct MenuBarView: View {
                 weeklyLimitRow(
                     label: "All Models",
                     percent: weeklyPct,
-                    resetsIn: viewModel.scrapedWeeklyResetsIn,
+                    reset: viewModel.scrapedAllModelsReset,
                     color: weeklyLimitColor(weeklyPct)
                 )
             }
@@ -268,7 +268,7 @@ struct MenuBarView: View {
                 weeklyLimitRow(
                     label: "Sonnet only",
                     percent: sonnetPct,
-                    resetsIn: viewModel.scrapedWeeklyResetsIn,
+                    reset: viewModel.scrapedSonnetReset,
                     color: weeklyLimitColor(sonnetPct)
                 )
             }
@@ -281,7 +281,7 @@ struct MenuBarView: View {
         }
     }
 
-    private func weeklyLimitRow(label: String, percent: Double, resetsIn: TimeInterval?, color: Color) -> some View {
+    private func weeklyLimitRow(label: String, percent: Double, reset: WeeklyResetInfo?, color: Color) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Text(label)
@@ -292,8 +292,8 @@ struct MenuBarView: View {
                     .font(.caption)
                     .fontWeight(.semibold)
                     .foregroundStyle(color)
-                if let resetsIn = resetsIn {
-                    Text("Resets in \(resetsIn.compactRemaining)")
+                if let reset = reset {
+                    Text(resetDisplayText(reset))
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                 }
@@ -303,6 +303,15 @@ struct MenuBarView: View {
                 color: color
             )
             .frame(height: 4)
+        }
+    }
+
+    private func resetDisplayText(_ reset: WeeklyResetInfo) -> String {
+        switch reset {
+        case .resetsIn(let interval):
+            return "Resets in \(interval.compactRemaining)"
+        case .resetsAt(let day, let time):
+            return "Resets \(day) \(time)"
         }
     }
 

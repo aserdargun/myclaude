@@ -1,6 +1,14 @@
 import Foundation
 import AppKit
 
+/// Describes when a weekly limit resets.
+enum WeeklyResetInfo {
+    /// Relative: resets in N seconds
+    case resetsIn(TimeInterval)
+    /// Absolute: resets on a specific day/time (e.g. "Sun", "3:00 PM")
+    case resetsAt(day: String, time: String)
+}
+
 /// Data scraped from claude.ai/settings usage page.
 struct ScrapedUsageData {
     /// Current session percentage used (e.g. 41.0)
@@ -11,8 +19,10 @@ struct ScrapedUsageData {
     let sonnetPercent: Double?
     /// Seconds until the current session resets
     let sessionResetsIn: TimeInterval
-    /// Seconds until the weekly limits reset, nil if not found
-    let weeklyResetsIn: TimeInterval?
+    /// When the All Models weekly limit resets
+    let allModelsReset: WeeklyResetInfo?
+    /// When the Sonnet only weekly limit resets
+    let sonnetReset: WeeklyResetInfo?
 }
 
 enum BrowserScraperError: LocalizedError {
@@ -103,12 +113,34 @@ final class BrowserScraper {
             result.resets_m = parseInt(sReset[2]);
         }
 
-        // Weekly "Resets in" from weekly section
-        var wReset = weeklyText.match(/Resets in\s+(?:(\d+)\s*days?\s+)?(?:(\d+)\s*hr?\s+)?(\d+)\s*min/i);
-        if (wReset) {
-            result.weekly_resets_d = wReset[1] ? parseInt(wReset[1]) : 0;
-            result.weekly_resets_h = wReset[2] ? parseInt(wReset[2]) : 0;
-            result.weekly_resets_m = parseInt(wReset[3]);
+        // All Models reset time: try "Resets in" or "Resets <Day> <Time>" formats
+        var amReset = allModelsText.match(/Resets in\s+(?:(\d+)\s*days?\s+)?(?:(\d+)\s*hr?\s+)?(\d+)\s*min/i);
+        if (amReset) {
+            result.am_resets_d = amReset[1] ? parseInt(amReset[1]) : 0;
+            result.am_resets_h = amReset[2] ? parseInt(amReset[2]) : 0;
+            result.am_resets_m = parseInt(amReset[3]);
+        } else {
+            var amResetDate = allModelsText.match(/Resets\s+(\w+)\s+(\d{1,2}:\d{2}\s*[AP]M)/i);
+            if (amResetDate) {
+                result.am_resets_day = amResetDate[1];
+                result.am_resets_time = amResetDate[2];
+            }
+        }
+
+        // Sonnet reset time: try "Resets in" or "Resets <Day> <Time>" formats
+        if (sonnetText) {
+            var snReset = sonnetText.match(/Resets in\s+(?:(\d+)\s*days?\s+)?(?:(\d+)\s*hr?\s+)?(\d+)\s*min/i);
+            if (snReset) {
+                result.sn_resets_d = snReset[1] ? parseInt(snReset[1]) : 0;
+                result.sn_resets_h = snReset[2] ? parseInt(snReset[2]) : 0;
+                result.sn_resets_m = parseInt(snReset[3]);
+            } else {
+                var snResetDate = sonnetText.match(/Resets\s+(\w+)\s+(\d{1,2}:\d{2}\s*[AP]M)/i);
+                if (snResetDate) {
+                    result.sn_resets_day = snResetDate[1];
+                    result.sn_resets_time = snResetDate[2];
+                }
+            }
         }
 
         return JSON.stringify(result);
@@ -301,20 +333,37 @@ final class BrowserScraper {
         // Sonnet %
         let sonnetPct = json["sonnet_pct"] as? Int
 
-        // Weekly resets in
-        let wDays = json["weekly_resets_d"] as? Int ?? 0
-        let wHours = json["weekly_resets_h"] as? Int ?? 0
-        let wMinutes = json["weekly_resets_m"] as? Int ?? 0
-        let weeklyResetsTotal = wDays * 86400 + wHours * 3600 + wMinutes * 60
-        let weeklyResetsIn: TimeInterval? = weeklyResetsTotal > 0 ? TimeInterval(weeklyResetsTotal) : nil
+        // All Models reset
+        let allModelsReset = parseWeeklyReset(json: json, prefix: "am")
+
+        // Sonnet reset
+        let sonnetReset = parseWeeklyReset(json: json, prefix: "sn")
 
         return ScrapedUsageData(
             sessionPercent: Double(sessionPct),
             weeklyPercent: Double(weeklyPct),
             sonnetPercent: sonnetPct.map { Double($0) },
             sessionResetsIn: resetsIn,
-            weeklyResetsIn: weeklyResetsIn
+            allModelsReset: allModelsReset,
+            sonnetReset: sonnetReset
         )
+    }
+
+    private func parseWeeklyReset(json: [String: Any], prefix: String) -> WeeklyResetInfo? {
+        // Try relative format: "Resets in Xd Xh Xm"
+        let days = json["\(prefix)_resets_d"] as? Int ?? 0
+        let hours = json["\(prefix)_resets_h"] as? Int ?? 0
+        let minutes = json["\(prefix)_resets_m"] as? Int ?? 0
+        let total = days * 86400 + hours * 3600 + minutes * 60
+        if total > 0 {
+            return .resetsIn(TimeInterval(total))
+        }
+        // Try absolute format: "Resets Sun 3:00 PM"
+        if let day = json["\(prefix)_resets_day"] as? String,
+           let time = json["\(prefix)_resets_time"] as? String {
+            return .resetsAt(day: day, time: time)
+        }
+        return nil
     }
 
     // MARK: - Helpers

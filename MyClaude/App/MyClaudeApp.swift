@@ -71,10 +71,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             repeats: true
         )
 
-        // Monitor clicks outside the panel to close it
-        eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
-            self?.closePanel()
-        }
     }
 
     @objc private func togglePanel() {
@@ -109,10 +105,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
 
         panel.makeKeyAndOrderFront(nil)
+
+        // Start monitoring for outside clicks to close
+        startEventMonitor()
     }
 
     private func closePanel() {
         panel?.orderOut(nil)
+        stopEventMonitor()
+    }
+
+    private func startEventMonitor() {
+        stopEventMonitor()
+        eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] event in
+            guard let self, let panel = self.panel, panel.isVisible else { return }
+            // Only close if the click is outside the panel
+            let clickLocation = event.locationInWindow
+            if event.window != panel {
+                self.closePanel()
+            }
+        }
+    }
+
+    private func stopEventMonitor() {
+        if let monitor = eventMonitor {
+            NSEvent.removeMonitor(monitor)
+            eventMonitor = nil
+        }
     }
 
     @objc private func updateMenuBarTitle() {

@@ -156,6 +156,23 @@ struct SettingsView: View {
                     }
             }
 
+            // Auto-scrape interval
+            HStack(spacing: 4) {
+                Text("Auto-refresh:")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                TextField("sec", value: Binding(
+                    get: { viewModel.scrapeIntervalSeconds },
+                    set: { viewModel.scrapeIntervalSeconds = max(1, $0) }
+                ), format: .number)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 44)
+                    .font(.caption)
+                Text("sec")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+
             // Session start date + time on same row
             VStack(alignment: .leading, spacing: 4) {
                 Text("First Session Start")

@@ -36,6 +36,14 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
     var scrapeError: String?
     var scrapeSuccess: Bool = false
 
+    /// Browser scrape interval in seconds. Persisted in UserDefaults.
+    var scrapeIntervalSeconds: Int {
+        didSet {
+            UserDefaults.standard.set(scrapeIntervalSeconds, forKey: "scrapeIntervalSeconds")
+            restartScrapeTimer()
+        }
+    }
+
     // MARK: - Calibration state
 
     /// Tracks which 5h period was active at last calibration, to detect period changes.
@@ -124,6 +132,7 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
     private let browserScraper = BrowserScraper()
 
     private var updateTimer: Timer?
+    private var scrapeTimer: Timer?
 
     // MARK: - Init
 
@@ -140,6 +149,8 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         self.alertEngine = alertEngine
         self.storage = storage
         self.calibrationManager = CalibrationManager(storage: storage)
+        let saved = UserDefaults.standard.integer(forKey: "scrapeIntervalSeconds")
+        self.scrapeIntervalSeconds = saved > 0 ? saved : 5
         super.init()
 
         logReader.delegate = self
@@ -154,8 +165,7 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         restoreCalibration()
         logReader.start()
         startUITimer()
-        // Auto-scrape from browser on launch to get fresh calibration
-        scrapeAndCalibrate()
+        startScrapeTimer()
     }
 
     /// Restore calibrated session override from persisted calibration data.
@@ -176,6 +186,8 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         logReader.stop()
         updateTimer?.invalidate()
         updateTimer = nil
+        scrapeTimer?.invalidate()
+        scrapeTimer = nil
     }
 
     func forceRefresh() {
@@ -262,6 +274,58 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
                 await MainActor.run {
                     self.scrapeError = error.localizedDescription
                     self.isScraping = false
+                }
+            }
+        }
+    }
+
+    // MARK: - Browser Scrape Timer
+
+    private func startScrapeTimer() {
+        scrapeTimer?.invalidate()
+        guard scrapeIntervalSeconds > 0 else { return }
+        // Fire immediately on start
+        scrapeQuietly()
+        scrapeTimer = Timer.scheduledTimer(
+            timeInterval: TimeInterval(scrapeIntervalSeconds),
+            target: self,
+            selector: #selector(scrapeTimerFired),
+            userInfo: nil,
+            repeats: true
+        )
+    }
+
+    private func restartScrapeTimer() {
+        startScrapeTimer()
+    }
+
+    @objc private func scrapeTimerFired() {
+        scrapeQuietly()
+    }
+
+    /// Scrape without showing success/error banners (background refresh).
+    private func scrapeQuietly() {
+        guard !isScraping else { return }
+        isScraping = true
+        Task {
+            do {
+                let data = try await browserScraper.scrape()
+                let sessionStart = Date().addingTimeInterval(
+                    data.sessionResetsIn - Constants.sessionDuration
+                )
+                await MainActor.run {
+                    self.performCalibration(
+                        sessionStartTime: sessionStart,
+                        sessionPercentage: data.sessionPercent,
+                        weeklyPercentage: data.weeklyPercent
+                    )
+                    self.isScraping = false
+                    self.scrapeError = nil
+                }
+            } catch {
+                await MainActor.run {
+                    self.isScraping = false
+                    // Don't show errors for background scrapes
                 }
             }
         }

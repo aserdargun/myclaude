@@ -92,24 +92,25 @@ final class BrowserScraper {
     /// Scrape Claude usage data from an open browser tab.
     /// If Chrome is not running or has no claude.ai/settings tab,
     /// opens Chrome with the settings page and waits for it to load.
-    func scrape() async throws -> ScrapedUsageData {
+    func scrape(url: String = Constants.claudeUsageURL) async throws -> ScrapedUsageData {
+        let searchDomain = extractDomain(from: url)
+
         // Try Chrome first
         if isAppRunning("Google Chrome") {
             do {
-                return try await scrapeFromChrome()
+                return try await scrapeFromChrome(matching: searchDomain)
             } catch BrowserScraperError.permissionDenied {
                 throw BrowserScraperError.permissionDenied("Google Chrome")
             } catch BrowserScraperError.noClaudeSettingsTab {
-                // No tab found — open it and retry
-                try await openClaudeSettingsInChrome()
-                return try await scrapeFromChrome()
+                try await openURLInChrome(url)
+                return try await scrapeFromChrome(matching: searchDomain)
             }
         }
 
         // Try Safari
         if isAppRunning("Safari") {
             do {
-                return try await scrapeFromSafari()
+                return try await scrapeFromSafari(matching: searchDomain)
             } catch BrowserScraperError.permissionDenied {
                 throw BrowserScraperError.permissionDenied("Safari")
             } catch BrowserScraperError.noClaudeSettingsTab {
@@ -118,14 +119,22 @@ final class BrowserScraper {
         }
 
         // Neither browser has the tab — open Chrome with the page
-        try await openClaudeSettingsInChrome()
-        return try await scrapeFromChrome()
+        try await openURLInChrome(url)
+        return try await scrapeFromChrome(matching: searchDomain)
+    }
+
+    private func extractDomain(from url: String) -> String {
+        // Extract "claude.ai/settings" from full URL for tab matching
+        guard let u = URL(string: url), let host = u.host else {
+            return "claude.ai/settings"
+        }
+        return "\(host)\(u.path)"
     }
 
     // MARK: - Open Chrome with claude.ai/settings
 
-    /// Opens Chrome (launching if needed) with claude.ai/settings and waits for load.
-    private func openClaudeSettingsInChrome() async throws {
+    /// Opens Chrome (launching if needed) with the given URL and waits for load.
+    private func openURLInChrome(_ url: String) async throws {
         let jxa = """
         (function() {
             var chrome = Application('Google Chrome');
@@ -136,7 +145,7 @@ final class BrowserScraper {
             var win = chrome.windows()[0];
             var tab = chrome.Tab();
             win.tabs.push(tab);
-            tab.url = '\(Constants.claudeUsageURL)';
+            tab.url = '\(url)';
             return 'OK';
         })()
         """
@@ -147,9 +156,7 @@ final class BrowserScraper {
 
     // MARK: - Chrome
 
-    private func scrapeFromChrome() async throws -> ScrapedUsageData {
-        // JXA (JavaScript for Automation) script for Chrome
-        // Wrapped in a function — top-level `return` is not valid in JXA.
+    private func scrapeFromChrome(matching domain: String) async throws -> ScrapedUsageData {
         let jxa = """
         (function() {
             var chrome = Application('Google Chrome');
@@ -158,7 +165,7 @@ final class BrowserScraper {
                 var tabs = windows[i].tabs();
                 for (var j = 0; j < tabs.length; j++) {
                     var url = tabs[j].url();
-                    if (url && url.indexOf('claude.ai/settings') !== -1) {
+                    if (url && url.indexOf('\(domain)') !== -1) {
                         var result = tabs[j].execute({javascript: \(scrapeJS.jxaEscaped)});
                         return result;
                     }
@@ -176,7 +183,7 @@ final class BrowserScraper {
 
     // MARK: - Safari
 
-    private func scrapeFromSafari() async throws -> ScrapedUsageData {
+    private func scrapeFromSafari(matching domain: String) async throws -> ScrapedUsageData {
         let jxa = """
         (function() {
             var safari = Application('Safari');
@@ -185,7 +192,7 @@ final class BrowserScraper {
                 var tabs = windows[i].tabs();
                 for (var j = 0; j < tabs.length; j++) {
                     var url = tabs[j].url();
-                    if (url && url.indexOf('claude.ai/settings') !== -1) {
+                    if (url && url.indexOf('\(domain)') !== -1) {
                         var result = safari.doJavaScript(\(scrapeJS.jxaEscaped), {in: tabs[j]});
                         return result;
                     }

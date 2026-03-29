@@ -141,19 +141,16 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 10) {
             SectionHeader(title: "Calibrate from Claude", icon: "slider.horizontal.3")
 
-            HStack(spacing: 4) {
-                Text("Source:")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-                Text(Constants.claudeUsageURL)
-                    .font(.caption2)
-                    .foregroundStyle(.blue)
-                    .underline()
-                    .onTapGesture {
-                        if let url = URL(string: Constants.claudeUsageURL) {
-                            NSWorkspace.shared.open(url)
-                        }
-                    }
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Source URL")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                TextField("https://claude.ai/settings/usage", text: Binding(
+                    get: { viewModel.scrapeSourceURL },
+                    set: { viewModel.scrapeSourceURL = $0 }
+                ))
+                    .textFieldStyle(.roundedBorder)
+                    .font(.caption)
             }
 
             // Auto-scrape interval

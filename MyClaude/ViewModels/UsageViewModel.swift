@@ -44,6 +44,13 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         }
     }
 
+    /// Claude usage page URL. Persisted in UserDefaults.
+    var scrapeSourceURL: String {
+        didSet {
+            UserDefaults.standard.set(scrapeSourceURL, forKey: "scrapeSourceURL")
+        }
+    }
+
     // MARK: - Calibration state
 
     /// Tracks which 5h period was active at last calibration, to detect period changes.
@@ -151,6 +158,7 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         self.calibrationManager = CalibrationManager(storage: storage)
         let saved = UserDefaults.standard.integer(forKey: "scrapeIntervalSeconds")
         self.scrapeIntervalSeconds = saved > 0 ? saved : 5
+        self.scrapeSourceURL = UserDefaults.standard.string(forKey: "scrapeSourceURL") ?? Constants.claudeUsageURL
         super.init()
 
         logReader.delegate = self
@@ -252,7 +260,7 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
 
         Task {
             do {
-                let data = try await browserScraper.scrape()
+                let data = try await browserScraper.scrape(url: self.scrapeSourceURL)
                 // Compute session start: now + resetsIn - 5 hours
                 let sessionStart = Date().addingTimeInterval(
                     data.sessionResetsIn - Constants.sessionDuration
@@ -309,7 +317,7 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         isScraping = true
         Task {
             do {
-                let data = try await browserScraper.scrape()
+                let data = try await browserScraper.scrape(url: self.scrapeSourceURL)
                 let sessionStart = Date().addingTimeInterval(
                     data.sessionResetsIn - Constants.sessionDuration
                 )

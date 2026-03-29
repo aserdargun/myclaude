@@ -303,7 +303,7 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         )
     }
 
-    private func restartScrapeTimer() {
+    func restartScrapeTimer() {
         startScrapeTimer()
     }
 

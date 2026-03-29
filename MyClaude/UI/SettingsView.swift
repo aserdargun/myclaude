@@ -23,8 +23,6 @@ private struct SessionPeriod: Identifiable {
 struct SettingsView: View {
     let viewModel: UsageViewModel
 
-    @State private var showResetConfirmation: Bool = false
-
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             // Header
@@ -148,35 +146,17 @@ struct SettingsView: View {
                 Text("sec")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
-            }
 
-            // Reset calibration
-            if viewModel.calibrationData != nil {
-                HStack {
-                    Button("Reset Calibration") {
-                        showResetConfirmation = true
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .foregroundStyle(.red)
-                }
+                Spacer()
 
-                if showResetConfirmation {
-                    HStack {
-                        Text("Reset calibration?")
-                            .font(.caption)
-                            .foregroundStyle(.red)
-                        Button("Yes") {
-                            viewModel.resetCalibration()
-                            showResetConfirmation = false
-                        }
+                Button {
+                    viewModel.restartScrapeTimer()
+                } label: {
+                    Text("Save")
                         .font(.caption)
-                        Button("No") {
-                            showResetConfirmation = false
-                        }
-                        .font(.caption)
-                    }
                 }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
             }
         }
     }

@@ -21,9 +21,10 @@ struct MenuBarView: View {
                 Spacer()
 
                 Button {
+                    viewModel.forceRefresh()
                     viewModel.scrapeAndCalibrate()
                 } label: {
-                    if viewModel.isScraping {
+                    if viewModel.isScraping || viewModel.isRefreshing {
                         ProgressView()
                             .controlSize(.mini)
                     } else {
@@ -33,8 +34,8 @@ struct MenuBarView: View {
                     }
                 }
                 .buttonStyle(.borderless)
-                .help("Auto-calibrate from browser")
-                .disabled(viewModel.isScraping)
+                .help("Auto-refresh and scrape")
+                .disabled(viewModel.isScraping || viewModel.isRefreshing)
 
                 Button {
                     viewModel.showSettings = true
@@ -80,7 +81,7 @@ struct MenuBarView: View {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.caption2)
                         .foregroundStyle(.green)
-                    Text("Calibrated from browser!")
+                    Text("Scraped from browser")
                         .font(.caption2)
                         .foregroundStyle(.green)
                 }
@@ -310,23 +311,6 @@ struct MenuBarView: View {
 
     private var actionsSection: some View {
         VStack(spacing: 4) {
-            Button {
-                viewModel.forceRefresh()
-            } label: {
-                if viewModel.isRefreshing {
-                    HStack(spacing: 4) {
-                        ProgressView()
-                            .controlSize(.small)
-                        Text("Scanning...")
-                    }
-                } else {
-                    Text("Refresh Now")
-                }
-            }
-            .buttonStyle(.borderless)
-            .font(.caption)
-            .disabled(viewModel.isRefreshing)
-
             Button("Quit myClaude") {
                 NSApplication.shared.terminate(nil)
             }

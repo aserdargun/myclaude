@@ -90,7 +90,8 @@ final class BrowserScraper {
     // MARK: - Public API
 
     /// Scrape Claude usage data from an open browser tab.
-    /// Tries Chrome first, then Safari.
+    /// If Chrome is not running or has no claude.ai/settings tab,
+    /// opens Chrome with the settings page and waits for it to load.
     func scrape() async throws -> ScrapedUsageData {
         // Try Chrome first
         if isAppRunning("Google Chrome") {
@@ -99,7 +100,9 @@ final class BrowserScraper {
             } catch BrowserScraperError.permissionDenied {
                 throw BrowserScraperError.permissionDenied("Google Chrome")
             } catch BrowserScraperError.noClaudeSettingsTab {
-                // Fall through to Safari
+                // No tab found — open it and retry
+                try await openClaudeSettingsInChrome()
+                return try await scrapeFromChrome()
             }
         }
 
@@ -110,14 +113,36 @@ final class BrowserScraper {
             } catch BrowserScraperError.permissionDenied {
                 throw BrowserScraperError.permissionDenied("Safari")
             } catch BrowserScraperError.noClaudeSettingsTab {
-                // Neither browser has the tab
+                // Fall through to open Chrome
             }
         }
 
-        if !isAppRunning("Google Chrome") && !isAppRunning("Safari") {
-            throw BrowserScraperError.noBrowserFound
-        }
-        throw BrowserScraperError.noClaudeSettingsTab
+        // Neither browser has the tab — open Chrome with the page
+        try await openClaudeSettingsInChrome()
+        return try await scrapeFromChrome()
+    }
+
+    // MARK: - Open Chrome with claude.ai/settings
+
+    /// Opens Chrome (launching if needed) with claude.ai/settings and waits for load.
+    private func openClaudeSettingsInChrome() async throws {
+        let jxa = """
+        (function() {
+            var chrome = Application('Google Chrome');
+            chrome.activate();
+            if (chrome.windows().length === 0) {
+                chrome.Window().make();
+            }
+            var win = chrome.windows()[0];
+            var tab = chrome.Tab();
+            win.tabs.push(tab);
+            tab.url = 'https://claude.ai/settings';
+            return 'OK';
+        })()
+        """
+        _ = try await runOsascript(language: "JavaScript", script: jxa)
+        // Wait for the page to load
+        try await Task.sleep(nanoseconds: 4_000_000_000)
     }
 
     // MARK: - Chrome

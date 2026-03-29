@@ -154,6 +154,8 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         restoreCalibration()
         logReader.start()
         startUITimer()
+        // Auto-scrape from browser on launch to get fresh calibration
+        scrapeAndCalibrate()
     }
 
     /// Restore calibrated session override from persisted calibration data.

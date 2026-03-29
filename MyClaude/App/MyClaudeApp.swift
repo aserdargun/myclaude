@@ -190,16 +190,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             )
         }
 
-        // Resize panel if visible to fit updated content
-        if let panel, let hostingView, panel.isVisible {
-            let fittingSize = hostingView.fittingSize
-            let panelHeight = min(fittingSize.height, 700)
-            var frame = panel.frame
-            let oldHeight = frame.height
-            frame.size.height = panelHeight
-            frame.origin.y += oldHeight - panelHeight
-            panel.setFrame(frame, display: true)
-        }
     }
 
     /// Usage percentage to NSColor: green < 60%, yellow 60-80%, red > 80%.

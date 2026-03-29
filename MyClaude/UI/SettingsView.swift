@@ -23,13 +23,6 @@ private struct SessionPeriod: Identifiable {
 struct SettingsView: View {
     let viewModel: UsageViewModel
 
-    // Input fields
-    @State private var sessionStartDate: Date = Date()
-    @State private var sessionStartHour: Int = 0
-    @State private var sessionStartMinute: Int = 0
-    @State private var sessionPercentText: String = ""
-    @State private var weeklyPercentText: String = ""
-    @State private var showConfirmation: Bool = false
     @State private var showResetConfirmation: Bool = false
 
     var body: some View {
@@ -54,8 +47,8 @@ struct SettingsView: View {
 
             ScrollView(.vertical, showsIndicators: true) {
                 VStack(alignment: .leading, spacing: 12) {
-                    // Calibration inputs
-                    calibrationInputSection
+                    // Scrape settings
+                    scrapeSettingsSection
 
                     Divider()
 
@@ -80,27 +73,15 @@ struct SettingsView: View {
         }
         .padding(12)
         .frame(width: 340, height: 600)
-        .onAppear {
-            prefillFromCurrentState()
-        }
     }
 
-    // MARK: - Computed: session start from inputs
+    // MARK: - Period chain from calibration data
 
-    private var inputSessionStart: Date? {
-        let calendar = Calendar.current
-        let dayComponents = calendar.dateComponents([.year, .month, .day], from: sessionStartDate)
-        var components = dayComponents
-        components.hour = sessionStartHour
-        components.minute = sessionStartMinute
-        components.second = 0
-        return calendar.date(from: components)
-    }
-
-    /// Build all 5h periods from the input start forward until now.
+    /// Build the current 5h period from calibration data.
     private var periods: [SessionPeriod] {
-        guard let firstStart = inputSessionStart else { return [] }
+        guard let cal = viewModel.calibrationData else { return [] }
         let now = Date()
+        let firstStart = cal.sessionStartTime
         guard firstStart <= now else { return [] }
 
         var result: [SessionPeriod] = []
@@ -135,11 +116,11 @@ struct SettingsView: View {
         return Double(weightedTokens) / cal.sessionBurnRate
     }
 
-    // MARK: - Calibration Input
+    // MARK: - Scrape Settings
 
-    private var calibrationInputSection: some View {
+    private var scrapeSettingsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            SectionHeader(title: "Calibrate from Claude", icon: "slider.horizontal.3")
+            SectionHeader(title: "Browser Scrape", icon: "globe")
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("Source URL")
@@ -153,7 +134,6 @@ struct SettingsView: View {
                     .font(.caption)
             }
 
-            // Auto-scrape interval
             HStack(spacing: 4) {
                 Text("Auto-refresh:")
                     .font(.caption)
@@ -170,107 +150,32 @@ struct SettingsView: View {
                     .foregroundStyle(.tertiary)
             }
 
-            // Session start date + time on same row
-            VStack(alignment: .leading, spacing: 4) {
-                Text("First Session Start")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                HStack(spacing: 6) {
-                    DatePicker(
-                        "",
-                        selection: $sessionStartDate,
-                        displayedComponents: [.date]
-                    )
-                    .datePickerStyle(.field)
-                    .labelsHidden()
-                    .font(.caption)
-
-                    TextField("HH", value: $sessionStartHour, format: .number.precision(.integerLength(2)))
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 32)
-                        .font(.caption)
-                    Text(":")
-                        .font(.caption)
-                    TextField("MM", value: $sessionStartMinute, format: .number.precision(.integerLength(2)))
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 32)
-                        .font(.caption)
-                }
-            }
-
-            // Percentages on same row
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Usage Percentages")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                HStack(spacing: 12) {
-                    HStack(spacing: 4) {
-                        Text("Session")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                        TextField("41", text: $sessionPercentText)
-                            .textFieldStyle(.roundedBorder)
-                            .frame(width: 44)
-                            .font(.caption)
-                        Text("%")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    HStack(spacing: 4) {
-                        Text("Weekly")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                        TextField("55", text: $weeklyPercentText)
-                            .textFieldStyle(.roundedBorder)
-                            .frame(width: 44)
-                            .font(.caption)
-                        Text("%")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-
-            // Buttons
-            HStack {
-                Button("Calibrate Now") {
-                    performCalibration()
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-                .disabled(!isInputValid)
-
-                if viewModel.calibrationData != nil {
-                    Button("Reset") {
+            // Reset calibration
+            if viewModel.calibrationData != nil {
+                HStack {
+                    Button("Reset Calibration") {
                         showResetConfirmation = true
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
                     .foregroundStyle(.red)
                 }
-            }
-            .padding(.top, 4)
 
-            if showConfirmation {
-                Text("Calibration saved!")
-                    .font(.caption)
-                    .foregroundStyle(.green)
-            }
-
-            if showResetConfirmation {
-                HStack {
-                    Text("Reset calibration?")
+                if showResetConfirmation {
+                    HStack {
+                        Text("Reset calibration?")
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                        Button("Yes") {
+                            viewModel.resetCalibration()
+                            showResetConfirmation = false
+                        }
                         .font(.caption)
-                        .foregroundStyle(.red)
-                    Button("Yes") {
-                        viewModel.resetCalibration()
-                        showResetConfirmation = false
+                        Button("No") {
+                            showResetConfirmation = false
+                        }
+                        .font(.caption)
                     }
-                    .font(.caption)
-                    Button("No") {
-                        showResetConfirmation = false
-                    }
-                    .font(.caption)
                 }
             }
         }
@@ -284,7 +189,7 @@ struct SettingsView: View {
 
             let allPeriods = periods
             if allPeriods.isEmpty {
-                Text("Enter a valid date and time above to see session periods.")
+                Text("Waiting for browser scrape data...")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
             } else {
@@ -426,49 +331,7 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Logic
-
-    private var isInputValid: Bool {
-        let sessionPct = Double(sessionPercentText) ?? 0
-        let weeklyPct = Double(weeklyPercentText) ?? 0
-        return sessionStartHour >= 0 && sessionStartHour < 24
-            && sessionStartMinute >= 0 && sessionStartMinute < 60
-            && sessionPct > 0 && sessionPct <= 100
-            && weeklyPct > 0 && weeklyPct <= 100
-    }
-
-    private func performCalibration() {
-        guard let sessionStart = inputSessionStart,
-              let sessionPct = Double(sessionPercentText),
-              let weeklyPct = Double(weeklyPercentText) else { return }
-
-        viewModel.performCalibration(
-            sessionStartTime: sessionStart,
-            sessionPercentage: sessionPct,
-            weeklyPercentage: weeklyPct
-        )
-
-        showConfirmation = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-            showConfirmation = false
-        }
-    }
-
-    private func prefillFromCurrentState() {
-        if let cal = viewModel.calibrationData {
-            sessionPercentText = "\(Int(cal.sessionPercentage))"
-            weeklyPercentText = "\(Int(cal.weeklyPercentage))"
-            sessionStartDate = cal.sessionStartTime
-            let calendar = Calendar.current
-            sessionStartHour = calendar.component(.hour, from: cal.sessionStartTime)
-            sessionStartMinute = calendar.component(.minute, from: cal.sessionStartTime)
-        } else if let start = viewModel.windowStartTime {
-            sessionStartDate = start
-            let calendar = Calendar.current
-            sessionStartHour = calendar.component(.hour, from: start)
-            sessionStartMinute = calendar.component(.minute, from: start)
-        }
-    }
+    // MARK: - Helpers
 
     private func formatTokens(_ count: Int) -> String {
         if count >= 1_000_000 {

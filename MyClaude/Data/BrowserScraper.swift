@@ -23,7 +23,7 @@ enum BrowserScraperError: LocalizedError {
         case .noBrowserFound:
             return "No supported browser running. Open Chrome or Safari."
         case .noClaudeSettingsTab:
-            return "No claude.ai/settings tab found. Open claude.ai → Settings → Usage in your browser."
+            return "No claude.ai/settings/usage tab found. Open \(Constants.claudeUsageURL) in your browser."
         case .scriptExecutionFailed(let detail):
             return "Script failed: \(detail)"
         case .parseFailure(let detail):
@@ -136,7 +136,7 @@ final class BrowserScraper {
             var win = chrome.windows()[0];
             var tab = chrome.Tab();
             win.tabs.push(tab);
-            tab.url = 'https://claude.ai/settings';
+            tab.url = '\(Constants.claudeUsageURL)';
             return 'OK';
         })()
         """

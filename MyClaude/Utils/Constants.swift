@@ -19,6 +19,7 @@ enum Constants {
 
     // Calibration
     static let recalibrationInterval: TimeInterval = 60 * 60 // 1 hour
+    static let claudeUsageURL = "https://claude.ai/settings/usage"
 
     // Log paths — focus on projects directory where JSONL conversation logs live
     static var claudeLogPaths: [String] {

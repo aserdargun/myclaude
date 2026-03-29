@@ -141,10 +141,20 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 10) {
             SectionHeader(title: "Calibrate from Claude", icon: "slider.horizontal.3")
 
-            Text("Enter values from Claude's usage settings page.")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 4) {
+                Text("Source:")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                Text(Constants.claudeUsageURL)
+                    .font(.caption2)
+                    .foregroundStyle(.blue)
+                    .underline()
+                    .onTapGesture {
+                        if let url = URL(string: Constants.claudeUsageURL) {
+                            NSWorkspace.shared.open(url)
+                        }
+                    }
+            }
 
             // Session start date + time on same row
             VStack(alignment: .leading, spacing: 4) {

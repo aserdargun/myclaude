@@ -58,6 +58,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         hostingView = NSHostingView(rootView: MenuBarView(viewModel: viewModel))
         panel?.contentView = hostingView
 
+        // Listen for content size changes to resize panel
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(resizePanel),
+            name: .panelContentDidChange,
+            object: nil
+        )
+
         // Start view model
         viewModel.start()
 
@@ -108,6 +116,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     private func closePanel() {
         panel?.orderOut(nil)
+    }
+
+    @objc private func resizePanel() {
+        guard let panel, let hostingView, panel.isVisible else { return }
+
+        let panelWidth: CGFloat = 340
+        let fittingSize = hostingView.fittingSize
+        let newHeight = min(max(fittingSize.height, 300), 800)
+
+        // Keep the top edge fixed: top = frame.maxY
+        let topEdge = panel.frame.maxY
+        let newY = topEdge - newHeight
+
+        panel.setFrame(
+            NSRect(x: panel.frame.origin.x, y: newY, width: panelWidth, height: newHeight),
+            display: true
+        )
     }
 
     // MARK: - NSWindowDelegate

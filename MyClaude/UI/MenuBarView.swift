@@ -1,5 +1,9 @@
 import SwiftUI
 
+extension Notification.Name {
+    static let panelContentDidChange = Notification.Name("panelContentDidChange")
+}
+
 struct MenuBarView: View {
     let viewModel: UsageViewModel
     @State private var isLocalExpanded = false
@@ -387,6 +391,10 @@ struct MenuBarView: View {
             Button {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     isLocalExpanded.toggle()
+                }
+                // Notify panel to resize after layout settles
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                    NotificationCenter.default.post(name: .panelContentDidChange, object: nil)
                 }
             } label: {
                 HStack {

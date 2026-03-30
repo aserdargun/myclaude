@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MenuBarView: View {
     let viewModel: UsageViewModel
+    @State private var isLocalExpanded = false
 
     var body: some View {
         if viewModel.showSettings {
@@ -383,20 +384,32 @@ struct MenuBarView: View {
 
     private var localSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Spacer()
-                SectionHeader(title: "Local", icon: "desktopcomputer")
-                Spacer()
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isLocalExpanded.toggle()
+                }
+            } label: {
+                HStack {
+                    Spacer()
+                    Image(systemName: isLocalExpanded ? "chevron.down" : "chevron.right")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                    SectionHeader(title: "Local", icon: "desktopcomputer")
+                    Spacer()
+                }
             }
+            .buttonStyle(.borderless)
 
-            StatsView(
-                weeklyStats: viewModel.weeklyStats,
-                todayStats: viewModel.todayStats,
-                todaySessionCount: viewModel.todaySessionCount,
-                currentTokens: viewModel.currentTokens,
-                currentEventCount: viewModel.currentEventCount,
-                hasCalibration: viewModel.calibrationData != nil
-            )
+            if isLocalExpanded {
+                StatsView(
+                    weeklyStats: viewModel.weeklyStats,
+                    todayStats: viewModel.todayStats,
+                    todaySessionCount: viewModel.todaySessionCount,
+                    currentTokens: viewModel.currentTokens,
+                    currentEventCount: viewModel.currentEventCount,
+                    hasCalibration: viewModel.calibrationData != nil
+                )
+            }
         }
     }
 

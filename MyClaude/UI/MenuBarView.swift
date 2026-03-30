@@ -389,11 +389,9 @@ struct MenuBarView: View {
     private var localSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Button {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    isLocalExpanded.toggle()
-                }
-                // Notify panel to resize after layout settles
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                isLocalExpanded.toggle()
+                // Resize panel after SwiftUI layout settles
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
                     NotificationCenter.default.post(name: .panelContentDidChange, object: nil)
                 }
             } label: {

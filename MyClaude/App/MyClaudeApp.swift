@@ -128,11 +128,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // Keep the top edge fixed: top = frame.maxY
         let topEdge = panel.frame.maxY
         let newY = topEdge - newHeight
+        let newFrame = NSRect(x: panel.frame.origin.x, y: newY, width: panelWidth, height: newHeight)
 
-        panel.setFrame(
-            NSRect(x: panel.frame.origin.x, y: newY, width: panelWidth, height: newHeight),
-            display: true
-        )
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.2
+            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            panel.animator().setFrame(newFrame, display: true)
+        }
     }
 
     // MARK: - NSWindowDelegate

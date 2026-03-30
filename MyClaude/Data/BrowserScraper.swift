@@ -17,8 +17,8 @@ struct ScrapedUsageData {
     let weeklyPercent: Double
     /// Weekly "Sonnet only" percentage used (e.g. 30.0), nil if not found
     let sonnetPercent: Double?
-    /// Seconds until the current session resets
-    let sessionResetsIn: TimeInterval
+    /// Seconds until the current session resets, nil if no active session
+    let sessionResetsIn: TimeInterval?
     /// When the All Models weekly limit resets
     let allModelsReset: WeeklyResetInfo?
     /// When the Sonnet only weekly limit resets
@@ -341,21 +341,18 @@ final class BrowserScraper {
             throw BrowserScraperError.parseFailure("Invalid JSON: \(jsonString.prefix(200))")
         }
 
-        guard let sessionPct = json["session_pct"] as? Int else {
-            throw BrowserScraperError.parseFailure("Could not find session %. Is the Usage section visible?")
-        }
+        // Session % — defaults to 0 if no active session ("Starts when a message is sent")
+        let sessionPct = json["session_pct"] as? Int ?? 0
 
         guard let weeklyPct = json["weekly_pct"] as? Int else {
             throw BrowserScraperError.parseFailure("Could not find weekly %. Is the Usage section visible?")
         }
 
+        // Session reset time — nil when no active session
         let hours = json["resets_h"] as? Int ?? 0
         let minutes = json["resets_m"] as? Int ?? 0
-        let resetsIn = TimeInterval(hours * 3600 + minutes * 60)
-
-        if resetsIn <= 0 {
-            throw BrowserScraperError.parseFailure("Could not find 'Resets in' time. Is the page fully loaded?")
-        }
+        let resetsInTotal = hours * 3600 + minutes * 60
+        let resetsIn: TimeInterval? = resetsInTotal > 0 ? TimeInterval(resetsInTotal) : nil
 
         // Sonnet %
         let sonnetPct = json["sonnet_pct"] as? Int

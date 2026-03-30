@@ -100,6 +100,27 @@ final class CalibrationManager {
         return data
     }
 
+    /// Update only weekly calibration (when no active session exists).
+    func calibrateWeeklyOnly(
+        weeklyPercentage: Double,
+        weeklyWeightedTokens: Int
+    ) {
+        // Preserve existing calibration if any, just update weekly fields
+        let existing = currentCalibration
+        let data = CalibrationData(
+            calibratedAt: Date(),
+            sessionStartTime: existing?.sessionStartTime ?? Date(),
+            sessionPercentage: existing?.sessionPercentage ?? 0,
+            weeklyPercentage: weeklyPercentage,
+            todayTokensAtCalibration: existing?.todayTokensAtCalibration ?? 0,
+            weeklyTokensAtCalibration: existing?.weeklyTokensAtCalibration ?? 0,
+            sessionTokensAtCalibration: existing?.sessionTokensAtCalibration ?? 0,
+            sessionWeightedTokensAtCalibration: existing?.sessionWeightedTokensAtCalibration ?? 0,
+            weeklyWeightedTokensAtCalibration: weeklyWeightedTokens
+        )
+        storage.save(data, forKey: Self.storageKey)
+    }
+
     /// Clear calibration.
     func reset() {
         storage.remove(forKey: Self.storageKey)

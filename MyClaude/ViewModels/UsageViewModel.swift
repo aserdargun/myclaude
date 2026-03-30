@@ -258,22 +258,10 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         Task {
             do {
                 let data = try await browserScraper.scrape(url: self.scrapeSourceURL, reload: true)
-                // Compute session start: now + resetsIn - 5 hours
-                let sessionStart = Date().addingTimeInterval(
-                    data.sessionResetsIn - Constants.sessionDuration
-                )
                 await MainActor.run {
-                    self.performCalibration(
-                        sessionStartTime: sessionStart,
-                        sessionPercentage: data.sessionPercent,
-                        weeklyPercentage: data.weeklyPercent
-                    )
-                    self.scrapedSonnetPercent = data.sonnetPercent
-                    self.scrapedAllModelsReset = data.allModelsReset
-                    self.scrapedSonnetReset = data.sonnetReset
+                    self.applyScrapedData(data)
                     self.isScraping = false
                     self.scrapeSuccess = true
-                    // Auto-dismiss success after 3 seconds
                     DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
                         self?.scrapeSuccess = false
                     }
@@ -284,6 +272,30 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
                     self.isScraping = false
                 }
             }
+        }
+    }
+
+    /// Apply scraped data. Calibrates session only if there's an active session reset time.
+    private func applyScrapedData(_ data: ScrapedUsageData) {
+        if let resetsIn = data.sessionResetsIn {
+            let sessionStart = Date().addingTimeInterval(resetsIn - Constants.sessionDuration)
+            performCalibration(
+                sessionStartTime: sessionStart,
+                sessionPercentage: data.sessionPercent,
+                weeklyPercentage: data.weeklyPercent
+            )
+        }
+        // Always update weekly data
+        scrapedSonnetPercent = data.sonnetPercent
+        scrapedAllModelsReset = data.allModelsReset
+        scrapedSonnetReset = data.sonnetReset
+        // Update weekly calibration even without active session
+        if data.sessionResetsIn == nil {
+            calibrationManager.calibrateWeeklyOnly(
+                weeklyPercentage: data.weeklyPercent,
+                weeklyWeightedTokens: weeklyStats.weightedTokens
+            )
+            updateUIState()
         }
     }
 
@@ -318,18 +330,8 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         Task {
             do {
                 let data = try await browserScraper.scrape(url: self.scrapeSourceURL)
-                let sessionStart = Date().addingTimeInterval(
-                    data.sessionResetsIn - Constants.sessionDuration
-                )
                 await MainActor.run {
-                    self.performCalibration(
-                        sessionStartTime: sessionStart,
-                        sessionPercentage: data.sessionPercent,
-                        weeklyPercentage: data.weeklyPercent
-                    )
-                    self.scrapedSonnetPercent = data.sonnetPercent
-                    self.scrapedAllModelsReset = data.allModelsReset
-                    self.scrapedSonnetReset = data.sonnetReset
+                    self.applyScrapedData(data)
                     self.isScraping = false
                     self.scrapeError = nil
                 }

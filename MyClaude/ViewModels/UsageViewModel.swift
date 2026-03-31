@@ -333,7 +333,7 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         isScraping = true
         Task {
             do {
-                let data = try await browserScraper.scrape(url: self.scrapeSourceURL)
+                let data = try await browserScraper.scrape(url: self.scrapeSourceURL, reload: true)
                 await MainActor.run {
                     self.applyScrapedData(data)
                     self.isScraping = false

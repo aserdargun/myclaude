@@ -164,8 +164,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     @objc private func updateMenuBarTitle() {
         guard let button = statusItem.button else { return }
 
-        let valueFontSize: CGFloat = 10
-        let labelFontSize: CGFloat = 7
+        let valueFontSize: CGFloat = 8
+        let labelFontSize: CGFloat = 6
         let valueFont = NSFont.monospacedDigitSystemFont(ofSize: valueFontSize, weight: .medium)
         let labelFont = NSFont.systemFont(ofSize: labelFontSize, weight: .regular)
         let labelColor = NSColor.secondaryLabelColor
@@ -245,23 +245,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     /// Renders a two-line menubar image: small label on top, values below.
+    /// Constrained to menubar height (22pt) with proper Retina support.
     private func renderMenuBarImage(labelLine: NSAttributedString, valueLine: NSAttributedString) -> NSImage {
-        let spacing: CGFloat = 1
+        let spacing: CGFloat = 0
         let labelSize = labelLine.size()
         let valueSize = valueLine.size()
-        let width = max(labelSize.width, valueSize.width)
-        let height = labelSize.height + spacing + valueSize.height
+        let width = ceil(max(labelSize.width, valueSize.width))
+        let menuBarHeight: CGFloat = 18 // safe height within 22pt menubar
 
-        let image = NSImage(size: NSSize(width: ceil(width), height: ceil(height)))
-        image.lockFocus()
-
-        // Draw values (bottom) — centered horizontally
-        let valueX = (width - valueSize.width) / 2
-        valueLine.draw(at: NSPoint(x: valueX, y: 0))
+        let image = NSImage(size: NSSize(width: width, height: menuBarHeight))
+        image.lockFocusFlipped(true) // flipped: origin at top-left
 
         // Draw label (top) — centered horizontally
         let labelX = (width - labelSize.width) / 2
-        labelLine.draw(at: NSPoint(x: labelX, y: valueSize.height + spacing))
+        labelLine.draw(at: NSPoint(x: labelX, y: 0))
+
+        // Draw values below label — centered horizontally
+        let valueX = (width - valueSize.width) / 2
+        valueLine.draw(at: NSPoint(x: valueX, y: labelSize.height + spacing))
 
         image.unlockFocus()
         image.isTemplate = false

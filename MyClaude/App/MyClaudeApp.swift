@@ -245,26 +245,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     /// Renders a two-line menubar image: small label on top, values below.
-    /// Constrained to menubar height (22pt) with proper Retina support.
     private func renderMenuBarImage(labelLine: NSAttributedString, valueLine: NSAttributedString) -> NSImage {
-        let spacing: CGFloat = 0
         let labelSize = labelLine.size()
         let valueSize = valueLine.size()
-        let width = ceil(max(labelSize.width, valueSize.width))
-        let menuBarHeight: CGFloat = 18 // safe height within 22pt menubar
+        let width = ceil(max(labelSize.width, valueSize.width)) + 4
+        let height = ceil(labelSize.height + valueSize.height)
 
-        let image = NSImage(size: NSSize(width: width, height: menuBarHeight))
-        image.lockFocusFlipped(true) // flipped: origin at top-left
+        let image = NSImage(size: NSSize(width: width, height: height), flipped: true, drawingHandler: { rect in
+            // Label at top, centered
+            let labelX = (rect.width - labelSize.width) / 2
+            labelLine.draw(at: NSPoint(x: labelX, y: 0))
 
-        // Draw label (top) — centered horizontally
-        let labelX = (width - labelSize.width) / 2
-        labelLine.draw(at: NSPoint(x: labelX, y: 0))
+            // Values below label, centered
+            let valueX = (rect.width - valueSize.width) / 2
+            valueLine.draw(at: NSPoint(x: valueX, y: labelSize.height))
 
-        // Draw values below label — centered horizontally
-        let valueX = (width - valueSize.width) / 2
-        valueLine.draw(at: NSPoint(x: valueX, y: labelSize.height + spacing))
-
-        image.unlockFocus()
+            return true
+        })
         image.isTemplate = false
         return image
     }

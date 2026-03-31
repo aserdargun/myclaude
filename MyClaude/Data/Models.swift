@@ -144,11 +144,3 @@ struct UsageAlert: Identifiable {
         self.timestamp = timestamp
     }
 }
-
-// MARK: - Log Entry (raw)
-
-struct RawLogEntry {
-    let line: String
-    let filePath: String
-    let lineNumber: Int
-}

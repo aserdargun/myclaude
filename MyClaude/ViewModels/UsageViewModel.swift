@@ -189,10 +189,9 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
     private func restoreCalibration() {
         guard let cal = calibrationManager.currentCalibration else { return }
         let now = Date()
-        var periodStart = cal.sessionStartTime
-        while periodStart.addingTimeInterval(Constants.sessionDuration) <= now {
-            periodStart = periodStart.addingTimeInterval(Constants.sessionDuration)
-        }
+        let elapsed = now.timeIntervalSince(cal.sessionStartTime)
+        let periodsElapsed = max(0, Int(elapsed / Constants.sessionDuration))
+        let periodStart = cal.sessionStartTime.addingTimeInterval(Double(periodsElapsed) * Constants.sessionDuration)
         // Only restore if the current period is still active
         if now < periodStart.addingTimeInterval(Constants.sessionDuration) {
             sessionEngine.overrideSessionStart(periodStart)
@@ -224,13 +223,11 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         sessionPercentage: Double,
         weeklyPercentage: Double
     ) {
-        // Find the current active 5h period by stepping forward from the first session start
+        // Find the current active 5h period using arithmetic
         let now = Date()
-        var periodStart = sessionStartTime
-        while periodStart.addingTimeInterval(Constants.sessionDuration) <= now {
-            periodStart = periodStart.addingTimeInterval(Constants.sessionDuration)
-        }
-        // periodStart is now the start of the current active period
+        let elapsed = now.timeIntervalSince(sessionStartTime)
+        let periodsElapsed = max(0, Int(elapsed / Constants.sessionDuration))
+        let periodStart = sessionStartTime.addingTimeInterval(Double(periodsElapsed) * Constants.sessionDuration)
 
         let periodUsage = aggregator.usage(
             from: periodStart,
@@ -269,6 +266,7 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
                     self.applyScrapedData(data)
                     self.isScraping = false
                     self.scrapeSuccess = true
+                    self.consecutiveScrapeFailures = 0
                     DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
                         self?.scrapeSuccess = false
                     }
@@ -343,6 +341,12 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         scrapeQuietly()
     }
 
+    /// Background scrape failure count for exponential backoff.
+    private var consecutiveScrapeFailures: Int = 0
+
+    /// Max consecutive failures before stopping background scrapes.
+    private static let maxConsecutiveScrapeFailures = 10
+
     /// Scrape without showing success/error banners (background refresh).
     ///
     /// Two-tier strategy to support fast intervals (e.g. 5 seconds):
@@ -355,22 +359,30 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
             scheduleNextScrape()
             return
         }
+        guard consecutiveScrapeFailures < Self.maxConsecutiveScrapeFailures else {
+            // Stop retrying after too many failures
+            return
+        }
         isScraping = true
         let needsReload = Date().timeIntervalSince(lastPageReloadDate) >= pageReloadInterval
+        let sourceURL = self.scrapeSourceURL
         Task {
             do {
-                let data = try await browserScraper.scrape(url: self.scrapeSourceURL, reload: needsReload)
+                let data = try await browserScraper.scrape(url: sourceURL, reload: needsReload)
                 await MainActor.run {
                     if needsReload { self.lastPageReloadDate = Date() }
                     self.applyScrapedData(data)
                     self.isScraping = false
                     self.scrapeError = nil
+                    self.consecutiveScrapeFailures = 0
                     self.scheduleNextScrape()
                 }
             } catch {
                 await MainActor.run {
                     self.isScraping = false
-                    // Don't show errors for background scrapes
+                    self.consecutiveScrapeFailures += 1
+                    // Don't show errors for background scrapes, but log them
+                    print("Background scrape failed (\(self.consecutiveScrapeFailures)/\(Self.maxConsecutiveScrapeFailures)): \(error.localizedDescription)")
                     self.scheduleNextScrape()
                 }
             }
@@ -411,18 +423,18 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
             return
         }
 
-        // Compute current period start
+        let duration = Constants.sessionDuration
+
+        // Compute current period start using arithmetic
         let now = Date()
-        var periodStart = cal.sessionStartTime
-        while periodStart.addingTimeInterval(Constants.sessionDuration) <= now {
-            periodStart = periodStart.addingTimeInterval(Constants.sessionDuration)
-        }
+        let elapsedNow = now.timeIntervalSince(cal.sessionStartTime)
+        let currentPeriodIndex = max(0, Int(elapsedNow / duration))
+        let periodStart = cal.sessionStartTime.addingTimeInterval(Double(currentPeriodIndex) * duration)
 
         // Compute period that was active at calibration time
-        var calPeriodStart = cal.sessionStartTime
-        while calPeriodStart.addingTimeInterval(Constants.sessionDuration) <= cal.calibratedAt {
-            calPeriodStart = calPeriodStart.addingTimeInterval(Constants.sessionDuration)
-        }
+        let elapsedCal = cal.calibratedAt.timeIntervalSince(cal.sessionStartTime)
+        let calPeriodIndex = max(0, Int(elapsedCal / duration))
+        let calPeriodStart = cal.sessionStartTime.addingTimeInterval(Double(calPeriodIndex) * duration)
 
         // If period changed, flag it
         if periodStart != calPeriodStart && !calibrationPeriodChanged {

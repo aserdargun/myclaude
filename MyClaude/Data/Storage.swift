@@ -18,8 +18,12 @@ final class UserDefaultsStorage: StorageProtocol {
     }
 
     func save<T: Encodable>(_ value: T, forKey key: String) {
-        guard let data = try? encoder.encode(value) else { return }
-        defaults.set(data, forKey: key)
+        do {
+            let data = try encoder.encode(value)
+            defaults.set(data, forKey: key)
+        } catch {
+            print("Storage: failed to encode \(key): \(error)")
+        }
     }
 
     func load<T: Decodable>(_ type: T.Type, forKey key: String) -> T? {

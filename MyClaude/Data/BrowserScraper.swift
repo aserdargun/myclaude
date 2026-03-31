@@ -409,11 +409,17 @@ final class BrowserScraper {
 
 private extension String {
     /// Wraps the string as a JXA string literal with proper escaping.
+    /// Escapes backslashes, quotes, backticks, newlines, carriage returns,
+    /// and other special characters to prevent injection.
     var jxaEscaped: String {
         let escaped = self
             .replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "'", with: "\\'")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+            .replacingOccurrences(of: "`", with: "\\`")
             .replacingOccurrences(of: "\n", with: "\\n")
+            .replacingOccurrences(of: "\r", with: "\\r")
+            .replacingOccurrences(of: "\0", with: "")
         return "'\(escaped)'"
     }
 }

@@ -162,8 +162,7 @@ final class BrowserScraper {
             } catch BrowserScraperError.permissionDenied {
                 throw BrowserScraperError.permissionDenied("Google Chrome")
             } catch BrowserScraperError.noClaudeSettingsTab {
-                try await openURLInChrome(url)
-                return try await scrapeFromChrome(matching: searchDomain)
+                return try await openAndScrapeInChrome(url, matching: searchDomain)
             }
         }
 
@@ -179,8 +178,7 @@ final class BrowserScraper {
         }
 
         // Neither browser has the tab — open Chrome with the page
-        try await openURLInChrome(url)
-        return try await scrapeFromChrome(matching: searchDomain)
+        return try await openAndScrapeInChrome(url, matching: searchDomain)
     }
 
     private func extractDomain(from url: String) -> String {
@@ -193,8 +191,9 @@ final class BrowserScraper {
 
     // MARK: - Open Chrome with claude.ai/settings
 
-    /// Opens Chrome (launching if needed) with the given URL and waits for load.
-    private func openURLInChrome(_ url: String) async throws {
+    /// Opens Chrome (launching if needed) with the given URL, waits for load,
+    /// then scrapes.
+    private func openAndScrapeInChrome(_ url: String, matching domain: String) async throws -> ScrapedUsageData {
         let jxa = """
         (function() {
             var chrome = Application('Google Chrome');
@@ -206,53 +205,44 @@ final class BrowserScraper {
             var tab = chrome.Tab();
             win.tabs.push(tab);
             tab.url = '\(url)';
-            return 'OK';
+            delay(1);
+            var maxWait = 15;
+            while (tab.loading() && maxWait > 0) {
+                delay(1);
+                maxWait--;
+            }
+            var result = tab.execute({javascript: \(scrapeJS.jxaEscaped)});
+            return result;
         })()
         """
-        _ = try await runOsascript(language: "JavaScript", script: jxa)
-        // Wait for the page to load
-        try await Task.sleep(nanoseconds: 4_000_000_000)
+        let output = try await runOsascript(language: "JavaScript", script: jxa)
+        return try parseResult(output)
     }
 
     // MARK: - Chrome
 
     private func scrapeFromChrome(matching domain: String, reload: Bool = false) async throws -> ScrapedUsageData {
-        // Optionally reload the tab first to get fresh data
-        if reload {
-            let reloadJxa = """
-            (function() {
-                var chrome = Application('Google Chrome');
-                var windows = chrome.windows();
-                for (var i = 0; i < windows.length; i++) {
-                    var tabs = windows[i].tabs();
-                    for (var j = 0; j < tabs.length; j++) {
-                        var url = tabs[j].url();
-                        if (url && url.indexOf('\(domain)') !== -1) {
-                            tabs[j].reload();
-                            return 'OK';
-                        }
-                    }
-                }
-                return '__NO_TAB__';
-            })()
-            """
-            let result = try await runOsascript(language: "JavaScript", script: reloadJxa)
-            if result.contains("__NO_TAB__") {
-                throw BrowserScraperError.noClaudeSettingsTab
-            }
-            // Wait for the page to reload
-            try await Task.sleep(nanoseconds: 3_000_000_000)
-        }
-
+        // Single JXA call: find tab → optionally reload & wait → scrape
+        let reloadFlag = reload ? "true" : "false"
         let jxa = """
         (function() {
             var chrome = Application('Google Chrome');
             var windows = chrome.windows();
+            var doReload = \(reloadFlag);
             for (var i = 0; i < windows.length; i++) {
                 var tabs = windows[i].tabs();
                 for (var j = 0; j < tabs.length; j++) {
                     var url = tabs[j].url();
                     if (url && url.indexOf('\(domain)') !== -1) {
+                        if (doReload) {
+                            tabs[j].reload();
+                            delay(1);
+                            var maxWait = 15;
+                            while (tabs[j].loading() && maxWait > 0) {
+                                delay(1);
+                                maxWait--;
+                            }
+                        }
                         var result = tabs[j].execute({javascript: \(scrapeJS.jxaEscaped)});
                         return result;
                     }

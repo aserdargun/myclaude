@@ -95,6 +95,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     /// Two-line menubar custom view
     private var menuBarView: MenuBarStatusView?
 
+    deinit {
+        if let activity { ProcessInfo.processInfo.endActivity(activity) }
+        updateTimer?.invalidate()
+    }
+
     static func main() {
         let app = NSApplication.shared
         let delegate = AppDelegate()

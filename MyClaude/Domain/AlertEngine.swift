@@ -1,7 +1,10 @@
 import Foundation
+import os.log
 #if canImport(UserNotifications)
 import UserNotifications
 #endif
+
+private let logger = Logger(subsystem: "com.myclaude", category: "AlertEngine")
 
 protocol AlertEngineDelegate: AnyObject {
     func alertEngine(_ engine: AlertEngine, didTriggerAlert alert: UsageAlert)
@@ -115,21 +118,21 @@ final class AlertEngine {
 
     func requestNotificationPermission() {
         guard Self.hasBundleIdentifier else {
-            print("Notifications unavailable: no bundle identifier (build as .app bundle)")
+            logger.info("Notifications unavailable: no bundle identifier (build as .app bundle)")
             return
         }
         #if canImport(UserNotifications)
         UNUserNotificationCenter.current().requestAuthorization(
             options: [.alert, .sound, .badge]
         ) { [weak self] granted, error in
-            DispatchQueue.main.async {
+            DispatchQueue.main.async { [weak self] in
                 if let error {
-                    print("Notification permission error: \(error)")
+                    logger.error("Notification permission error: \(error.localizedDescription)")
                     self?.notificationsAvailable = false
                 } else if granted {
                     self?.notificationsAvailable = true
                 } else {
-                    print("Notifications not granted by user")
+                    logger.info("Notifications not granted by user")
                     self?.notificationsAvailable = false
                 }
             }

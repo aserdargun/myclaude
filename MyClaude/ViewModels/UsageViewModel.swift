@@ -308,13 +308,15 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         guard scrapeIntervalSeconds > 0 else { return }
         // Fire immediately on start
         scrapeQuietly()
-        scrapeTimer = Timer.scheduledTimer(
+        let timer = Timer(
             timeInterval: TimeInterval(scrapeIntervalSeconds),
             target: self,
             selector: #selector(scrapeTimerFired),
             userInfo: nil,
             repeats: true
         )
+        RunLoop.main.add(timer, forMode: .common)
+        scrapeTimer = timer
     }
 
     private func restartScrapeTimer() {
@@ -349,13 +351,15 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
     // MARK: - UI Timer
 
     private func startUITimer() {
-        updateTimer = Timer.scheduledTimer(
+        let timer = Timer(
             timeInterval: Constants.uiUpdateInterval,
             target: self,
             selector: #selector(timerFired),
             userInfo: nil,
             repeats: true
         )
+        RunLoop.main.add(timer, forMode: .common)
+        updateTimer = timer
     }
 
     @objc private func timerFired() {

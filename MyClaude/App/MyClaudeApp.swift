@@ -163,7 +163,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     // MARK: - Menubar Title
 
+    /// Coalesces multiple update requests (timer + notification) into one,
+    /// deferred to the next run loop pass to avoid layout recursion.
     @objc private func updateMenuBarTitle() {
+        NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(doUpdateMenuBarTitle), object: nil)
+        perform(#selector(doUpdateMenuBarTitle), with: nil, afterDelay: 0)
+    }
+
+    @objc private func doUpdateMenuBarTitle() {
         guard let button = statusItem.button else { return }
 
         let valueFontSize: CGFloat = 11

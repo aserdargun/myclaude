@@ -1,5 +1,8 @@
 import Foundation
+import os.log
 import SwiftUI
+
+private let logger = Logger(subsystem: "com.myclaude", category: "UsageViewModel")
 
 @Observable
 final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, AlertEngineDelegate {
@@ -234,7 +237,7 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
             to: periodStart.addingTimeInterval(Constants.sessionDuration)
         )
 
-        let _ = calibrationManager.calibrate(
+        _ = calibrationManager.calibrate(
             sessionStartTime: sessionStartTime,
             sessionPercentage: sessionPercentage,
             weeklyPercentage: weeklyPercentage,
@@ -382,7 +385,7 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
                     self.isScraping = false
                     self.consecutiveScrapeFailures += 1
                     // Don't show errors for background scrapes, but log them
-                    print("Background scrape failed (\(self.consecutiveScrapeFailures)/\(Self.maxConsecutiveScrapeFailures)): \(error.localizedDescription)")
+                    logger.warning("Background scrape failed (\(self.consecutiveScrapeFailures)/\(Self.maxConsecutiveScrapeFailures)): \(error.localizedDescription)")
                     self.scheduleNextScrape()
                 }
             }
@@ -492,7 +495,7 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
 
     func logReader(_ reader: LogReader, didEncounterError error: Error) {
         isRefreshing = false
-        print("Log reader error: \(error)")
+        logger.error("Log reader error: \(error.localizedDescription)")
     }
 
     // MARK: - SessionEngineDelegate

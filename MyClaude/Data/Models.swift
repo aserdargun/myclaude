@@ -2,14 +2,14 @@ import Foundation
 
 // MARK: - Usage Event
 
-enum EventType: String, Codable {
+enum EventType: String, Codable, Sendable {
     case request
     case response
     case error
     case unknown
 }
 
-struct UsageEvent: Codable, Identifiable {
+struct UsageEvent: Codable, Identifiable, Sendable {
     let id: UUID
     let timestamp: Date
     let tokens: Int?
@@ -124,14 +124,14 @@ struct WeeklyStats {
 
 // MARK: - Alert
 
-enum AlertLevel: Comparable {
+enum AlertLevel: Comparable, Sendable {
     case safe
     case warning
     case critical
     case expired
 }
 
-struct UsageAlert: Identifiable {
+struct UsageAlert: Identifiable, Sendable {
     let id: UUID
     let level: AlertLevel
     let message: String

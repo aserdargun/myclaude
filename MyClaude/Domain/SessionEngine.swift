@@ -168,7 +168,7 @@ final class SessionEngine {
         }
 
         let sessionEvents = Array(recentEvents[sessionStartIndex...])
-        let windowStart = sessionEvents.first!.timestamp
+        guard let windowStart = sessionEvents.first?.timestamp else { return }
         currentSession = UsageSession(windowStart: windowStart, events: sessionEvents)
     }
 

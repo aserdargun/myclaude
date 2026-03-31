@@ -1,4 +1,7 @@
 import Foundation
+import os.log
+
+private let logger = Logger(subsystem: "com.myclaude", category: "Storage")
 
 protocol StorageProtocol {
     func save<T: Encodable>(_ value: T, forKey key: String)
@@ -22,7 +25,7 @@ final class UserDefaultsStorage: StorageProtocol {
             let data = try encoder.encode(value)
             defaults.set(data, forKey: key)
         } catch {
-            print("Storage: failed to encode \(key): \(error)")
+            logger.error("Failed to encode \(key): \(error.localizedDescription)")
         }
     }
 

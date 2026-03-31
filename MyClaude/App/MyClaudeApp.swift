@@ -34,6 +34,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var updateTimer: Timer?
     private var activity: NSObjectProtocol?
 
+    /// Two-line menubar labels
+    private var labelField: NSTextField?
+    private var valueField: NSTextField?
+
     static func main() {
         let app = NSApplication.shared
         let delegate = AppDelegate()
@@ -56,6 +60,48 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if let button = statusItem.button {
             button.target = self
             button.action = #selector(togglePanel)
+
+            // Set up two-line display: label on top, values below
+            let container = NSView()
+            container.translatesAutoresizingMaskIntoConstraints = false
+
+            let label = NSTextField(labelWithString: "")
+            label.translatesAutoresizingMaskIntoConstraints = false
+            label.isEditable = false
+            label.isBordered = false
+            label.drawsBackground = false
+            label.alignment = .center
+            label.maximumNumberOfLines = 1
+            labelField = label
+
+            let value = NSTextField(labelWithString: "")
+            value.translatesAutoresizingMaskIntoConstraints = false
+            value.isEditable = false
+            value.isBordered = false
+            value.drawsBackground = false
+            value.alignment = .center
+            value.maximumNumberOfLines = 1
+            valueField = value
+
+            container.addSubview(label)
+            container.addSubview(value)
+            button.addSubview(container)
+
+            NSLayoutConstraint.activate([
+                container.leadingAnchor.constraint(equalTo: button.leadingAnchor, constant: 4),
+                container.trailingAnchor.constraint(equalTo: button.trailingAnchor, constant: -4),
+                container.centerYAnchor.constraint(equalTo: button.centerYAnchor),
+
+                label.topAnchor.constraint(equalTo: container.topAnchor),
+                label.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+                label.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+
+                value.topAnchor.constraint(equalTo: label.bottomAnchor, constant: -1),
+                value.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+                value.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+                value.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            ])
+
             updateMenuBarTitle()
         }
 
@@ -162,10 +208,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     @objc private func updateMenuBarTitle() {
-        guard let button = statusItem.button else { return }
+        guard let button = statusItem.button,
+              let labelField, let valueField else { return }
 
-        let valueFontSize: CGFloat = 8
-        let labelFontSize: CGFloat = 6
+        let valueFontSize: CGFloat = 9
+        let labelFontSize: CGFloat = 7
         let valueFont = NSFont.monospacedDigitSystemFont(ofSize: valueFontSize, weight: .medium)
         let labelFont = NSFont.systemFont(ofSize: labelFontSize, weight: .regular)
         let labelColor = NSColor.secondaryLabelColor
@@ -175,7 +222,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             let sessionPct = viewModel.estimatedSessionPercent
             let weeklyPct = viewModel.estimatedWeeklyPercent
 
-            // -- Build value line (colored segments) --
+            // -- Label row (static) --
+            labelField.attributedStringValue = NSAttributedString(
+                string: "Resets in - Session - Weekly",
+                attributes: [.font: labelFont, .foregroundColor: labelColor]
+            )
+            labelField.isHidden = false
+
+            // -- Value row (dynamic, colored) --
             let valueLine = NSMutableAttributedString()
 
             let timeColor = nsColorForTime()
@@ -216,54 +270,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 ))
             }
 
-            // -- Build label line --
-            let labelLine = NSAttributedString(
-                string: "Resets in - Session - Weekly",
-                attributes: [.font: labelFont, .foregroundColor: labelColor]
-            )
-
-            // -- Render two-line image for menubar --
-            button.attributedTitle = NSAttributedString()
-            button.image = renderMenuBarImage(labelLine: labelLine, valueLine: valueLine)
-            button.imagePosition = .imageOnly
+            valueField.attributedStringValue = valueLine
+            button.title = String(repeating: " ", count: 20) // reserve width
 
         } else if viewModel.hasSession {
-            button.image = nil
-            button.imagePosition = .noImage
-            button.attributedTitle = NSAttributedString(
+            labelField.isHidden = true
+            valueField.attributedStringValue = NSAttributedString(
                 string: "Expired",
                 attributes: [.font: valueFont, .foregroundColor: NSColor.secondaryLabelColor]
             )
+            button.title = String(repeating: " ", count: 10)
         } else {
-            button.image = nil
-            button.imagePosition = .noImage
-            button.attributedTitle = NSAttributedString(
+            labelField.isHidden = true
+            valueField.attributedStringValue = NSAttributedString(
                 string: "No session",
                 attributes: [.font: valueFont, .foregroundColor: NSColor.secondaryLabelColor]
             )
+            button.title = String(repeating: " ", count: 10)
         }
-    }
-
-    /// Renders a two-line menubar image: small label on top, values below.
-    private func renderMenuBarImage(labelLine: NSAttributedString, valueLine: NSAttributedString) -> NSImage {
-        let labelSize = labelLine.size()
-        let valueSize = valueLine.size()
-        let width = ceil(max(labelSize.width, valueSize.width)) + 4
-        let height = ceil(labelSize.height + valueSize.height)
-
-        let image = NSImage(size: NSSize(width: width, height: height), flipped: true, drawingHandler: { rect in
-            // Label at top, centered
-            let labelX = (rect.width - labelSize.width) / 2
-            labelLine.draw(at: NSPoint(x: labelX, y: 0))
-
-            // Values below label, centered
-            let valueX = (rect.width - valueSize.width) / 2
-            valueLine.draw(at: NSPoint(x: valueX, y: labelSize.height))
-
-            return true
-        })
-        image.isTemplate = false
-        return image
     }
 
     /// Usage percentage to NSColor: green < 60%, yellow 60-80%, red > 80%.

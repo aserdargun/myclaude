@@ -225,8 +225,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     @objc private func updateMenuBarTitle() {
         guard let button = statusItem.button else { return }
 
-        let valueFontSize: CGFloat = 9
-        let labelFontSize: CGFloat = 7
+        let valueFontSize: CGFloat = 11
+        let labelFontSize: CGFloat = 8
         let valueFont = NSFont.monospacedDigitSystemFont(ofSize: valueFontSize, weight: .medium)
         let labelFont = NSFont.systemFont(ofSize: labelFontSize, weight: .regular)
 

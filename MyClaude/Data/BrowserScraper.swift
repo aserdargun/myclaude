@@ -349,9 +349,11 @@ final class BrowserScraper {
 
         // Session % — defaults to 0 if no active session ("Starts when a message is sent")
         let sessionPct = json["session_pct"] as? Int ?? 0
+        let weeklyPct = json["weekly_pct"] as? Int
 
-        guard let weeklyPct = json["weekly_pct"] as? Int else {
-            throw BrowserScraperError.parseFailure("Could not find weekly %. Is the Usage section visible?")
+        // If neither session nor weekly data found, the page likely hasn't rendered yet
+        guard sessionPct > 0 || weeklyPct != nil else {
+            throw BrowserScraperError.parseFailure("No usage data found. Is the Usage section visible?")
         }
 
         // Session reset time — nil when no active session
@@ -371,7 +373,7 @@ final class BrowserScraper {
 
         return ScrapedUsageData(
             sessionPercent: Double(sessionPct),
-            weeklyPercent: Double(weeklyPct),
+            weeklyPercent: Double(weeklyPct ?? 0),
             sonnetPercent: sonnetPct.map { Double($0) },
             sessionResetsIn: resetsIn,
             allModelsReset: allModelsReset,

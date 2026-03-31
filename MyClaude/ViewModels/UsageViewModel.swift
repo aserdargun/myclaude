@@ -308,19 +308,28 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         guard scrapeIntervalSeconds > 0 else { return }
         // Fire immediately on start
         scrapeQuietly()
+    }
+
+    private func restartScrapeTimer() {
+        scrapeTimer?.invalidate()
+        startScrapeTimer()
+    }
+
+    /// Schedule the next scrape after `scrapeIntervalSeconds` from now.
+    /// Uses a one-shot timer so the interval is measured from completion of
+    /// the previous scrape, not from a fixed repeating clock.
+    private func scheduleNextScrape() {
+        scrapeTimer?.invalidate()
+        guard scrapeIntervalSeconds > 0 else { return }
         let timer = Timer(
             timeInterval: TimeInterval(scrapeIntervalSeconds),
             target: self,
             selector: #selector(scrapeTimerFired),
             userInfo: nil,
-            repeats: true
+            repeats: false
         )
         RunLoop.main.add(timer, forMode: .common)
         scrapeTimer = timer
-    }
-
-    private func restartScrapeTimer() {
-        startScrapeTimer()
     }
 
     @objc private func scrapeTimerFired() {
@@ -338,11 +347,13 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
                     self.applyScrapedData(data)
                     self.isScraping = false
                     self.scrapeError = nil
+                    self.scheduleNextScrape()
                 }
             } catch {
                 await MainActor.run {
                     self.isScraping = false
                     // Don't show errors for background scrapes
+                    self.scheduleNextScrape()
                 }
             }
         }

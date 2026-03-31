@@ -32,6 +32,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var panel: MenuBarPanel?
     private var hostingView: NSHostingView<MenuBarView>?
     private var updateTimer: Timer?
+    private var activity: NSObjectProtocol?
 
     static func main() {
         let app = NSApplication.shared
@@ -42,6 +43,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApplication.shared.setActivationPolicy(.accessory)
+
+        // Prevent App Nap from suspending timers when no windows are visible
+        activity = ProcessInfo.processInfo.beginActivity(
+            options: [.userInitiatedAllowingIdleSystemSleep, .idleSystemSleepDisabled],
+            reason: "Menubar needs continuous timer updates"
+        )
 
         // Create status item
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -66,17 +73,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             object: nil
         )
 
+        // Refresh menubar title immediately when scrape data arrives
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(updateMenuBarTitle),
+            name: .scrapeDataDidUpdate,
+            object: nil
+        )
+
         // Start view model
         viewModel.start()
 
-        // Timer to update attributed title
-        updateTimer = Timer.scheduledTimer(
+        // Timer to update attributed title — use .common mode so it fires
+        // even during menu tracking and other UI interactions
+        let timer = Timer(
             timeInterval: Constants.uiUpdateInterval,
             target: self,
             selector: #selector(updateMenuBarTitle),
             userInfo: nil,
             repeats: true
         )
+        RunLoop.main.add(timer, forMode: .common)
+        updateTimer = timer
 
     }
 

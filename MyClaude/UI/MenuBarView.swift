@@ -2,6 +2,7 @@ import SwiftUI
 
 extension Notification.Name {
     static let panelContentDidChange = Notification.Name("panelContentDidChange")
+    static let scrapeDataDidUpdate = Notification.Name("scrapeDataDidUpdate")
 }
 
 struct MenuBarView: View {

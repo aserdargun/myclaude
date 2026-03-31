@@ -257,6 +257,7 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
 
     /// Auto-calibrate by scraping claude.ai/settings from an open browser tab.
     func scrapeAndCalibrate() {
+        guard !isScraping else { return }
         isScraping = true
         scrapeError = nil
         scrapeSuccess = false
@@ -350,7 +351,10 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
     /// - Every `pageReloadInterval` seconds: reload the page first to fetch
     ///   fresh percentage data from the server, then scrape.
     private func scrapeQuietly() {
-        guard !isScraping else { return }
+        guard !isScraping else {
+            scheduleNextScrape()
+            return
+        }
         isScraping = true
         let needsReload = Date().timeIntervalSince(lastPageReloadDate) >= pageReloadInterval
         Task {

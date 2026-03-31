@@ -354,8 +354,8 @@ struct MenuBarView: View {
                     Text(Self.shortDayNames[i])
                         .font(.system(size: 7))
                         .foregroundStyle(isCurrentDay ? .red : .secondary)
-                    Text("\(targets[i])%")
-                        .font(.system(size: 6))
+                    Text("\(targets.prefix(i + 1).reduce(0, +))%")
+                        .font(.system(size: 8))
                         .foregroundColor(isCurrentDay ? .red.opacity(0.7) : .secondary.opacity(0.6))
                 }
                 .position(x: (xStart + xEnd) / 2, y: geometry.size.height / 2)

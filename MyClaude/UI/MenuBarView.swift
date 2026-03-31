@@ -364,9 +364,11 @@ struct MenuBarView: View {
         .frame(height: 20)
     }
 
-    /// Current day index where Sunday=0, Saturday=6
+    /// Current day index where Sunday=0, Saturday=6.
+    /// Derived from viewModel.todayStats.date so SwiftUI re-evaluates
+    /// when the day changes (todayStats is updated by the UI timer).
     private var currentSundayBasedDayIndex: Int {
-        let weekday = Calendar.current.component(.weekday, from: Date())
+        let weekday = Calendar.current.component(.weekday, from: viewModel.todayStats.date)
         return weekday - 1  // Calendar weekday: 1=Sun, 2=Mon, ..., 7=Sat → 0-6
     }
 

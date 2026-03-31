@@ -1,6 +1,35 @@
 import SwiftUI
 import AppKit
 
+/// Custom NSView for drawing two lines of text in the menubar.
+/// Uses manual frame-based drawing — no Auto Layout to avoid
+/// layout recursion inside NSStatusBarButton.
+private class MenuBarStatusView: NSView {
+    var labelLine: NSAttributedString?
+    var valueLine: NSAttributedString?
+
+    override func draw(_ dirtyRect: NSRect) {
+        guard let labelLine, let valueLine else { return }
+
+        let labelSize = labelLine.size()
+        let valueSize = valueLine.size()
+        let totalHeight = labelSize.height + valueSize.height
+        let topPad = (bounds.height - totalHeight) / 2
+
+        // Label (top), centered horizontally
+        let labelX = (bounds.width - labelSize.width) / 2
+        labelLine.draw(at: NSPoint(x: labelX, y: bounds.height - topPad - labelSize.height))
+
+        // Values (below label), centered horizontally
+        let valueX = (bounds.width - valueSize.width) / 2
+        valueLine.draw(at: NSPoint(x: valueX, y: bounds.height - topPad - labelSize.height - valueSize.height))
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        superview?.mouseDown(with: event)
+    }
+}
+
 /// Floating panel that behaves like MenuBarExtra's .window style:
 /// - Closes when clicking outside or when the app deactivates
 /// - Non-activating (doesn't steal focus from other apps)
@@ -33,6 +62,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var hostingView: NSHostingView<MenuBarView>?
     private var updateTimer: Timer?
     private var activity: NSObjectProtocol?
+
+    /// Two-line menubar custom view
+    private var menuBarView: MenuBarStatusView?
 
     static func main() {
         let app = NSApplication.shared
@@ -164,78 +196,106 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     @objc private func updateMenuBarTitle() {
         guard let button = statusItem.button else { return }
 
-        let fontSize: CGFloat = 12
-        let font = NSFont.monospacedDigitSystemFont(ofSize: fontSize, weight: .medium)
+        let valueFontSize: CGFloat = 9
+        let labelFontSize: CGFloat = 7
+        let valueFont = NSFont.monospacedDigitSystemFont(ofSize: valueFontSize, weight: .medium)
+        let labelFont = NSFont.systemFont(ofSize: labelFontSize, weight: .regular)
+        let labelColor = NSColor.secondaryLabelColor
 
         if viewModel.isSessionActive {
             let mins = Int(viewModel.remainingTime / 60)
             let sessionPct = viewModel.estimatedSessionPercent
             let weeklyPct = viewModel.estimatedWeeklyPercent
 
-            let result = NSMutableAttributedString()
-
-            // Time segment — colored by time remaining
-            let timeColor = nsColorForTime()
-            let timeStr = NSAttributedString(
-                string: "\(mins)m",
-                attributes: [.font: font, .foregroundColor: timeColor]
+            // -- Label row --
+            let labelLine = NSAttributedString(
+                string: "Resets in - Session - Weekly",
+                attributes: [.font: labelFont, .foregroundColor: labelColor]
             )
-            result.append(timeStr)
 
-            // Separator
+            // -- Value row (colored) --
+            let valueLine = NSMutableAttributedString()
+            let timeColor = nsColorForTime()
+            valueLine.append(NSAttributedString(
+                string: "\(mins)m",
+                attributes: [.font: valueFont, .foregroundColor: timeColor]
+            ))
             let sep = NSAttributedString(
                 string: "-",
-                attributes: [.font: font, .foregroundColor: NSColor.secondaryLabelColor]
+                attributes: [.font: valueFont, .foregroundColor: NSColor.secondaryLabelColor]
             )
-            result.append(sep)
+            valueLine.append(sep)
 
-            // Session % — colored by usage
-            let sessionStr: String
-            let sessionColor: NSColor
             if let pct = sessionPct {
                 let val = Int(min(pct, 100))
-                sessionStr = "\(val)%"
-                sessionColor = usageNSColor(val)
+                valueLine.append(NSAttributedString(
+                    string: "\(val)%",
+                    attributes: [.font: valueFont, .foregroundColor: usageNSColor(val)]
+                ))
             } else {
-                sessionStr = "-"
-                sessionColor = NSColor.secondaryLabelColor
+                valueLine.append(NSAttributedString(
+                    string: "-",
+                    attributes: [.font: valueFont, .foregroundColor: NSColor.secondaryLabelColor]
+                ))
             }
-            result.append(NSAttributedString(
-                string: sessionStr,
-                attributes: [.font: font, .foregroundColor: sessionColor]
-            ))
+            valueLine.append(sep)
 
-            result.append(sep)
-
-            // Weekly % — colored by usage
-            let weeklyStr: String
-            let weeklyColor: NSColor
             if let pct = weeklyPct {
                 let val = Int(min(pct, 100))
-                weeklyStr = "\(val)%"
-                weeklyColor = usageNSColor(val)
+                valueLine.append(NSAttributedString(
+                    string: "\(val)%",
+                    attributes: [.font: valueFont, .foregroundColor: usageNSColor(val)]
+                ))
             } else {
-                weeklyStr = "-"
-                weeklyColor = NSColor.secondaryLabelColor
+                valueLine.append(NSAttributedString(
+                    string: "-",
+                    attributes: [.font: valueFont, .foregroundColor: NSColor.secondaryLabelColor]
+                ))
             }
-            result.append(NSAttributedString(
-                string: weeklyStr,
-                attributes: [.font: font, .foregroundColor: weeklyColor]
-            ))
 
-            button.attributedTitle = result
+            applyTwoLineDisplay(button: button, labelLine: labelLine, valueLine: valueLine)
+
         } else if viewModel.hasSession {
-            button.attributedTitle = NSAttributedString(
+            let text = NSAttributedString(
                 string: "Expired",
-                attributes: [.font: font, .foregroundColor: NSColor.secondaryLabelColor]
+                attributes: [.font: valueFont, .foregroundColor: NSColor.secondaryLabelColor]
             )
+            applySingleLineDisplay(button: button, text: text)
         } else {
-            button.attributedTitle = NSAttributedString(
+            let text = NSAttributedString(
                 string: "No session",
-                attributes: [.font: font, .foregroundColor: NSColor.secondaryLabelColor]
+                attributes: [.font: valueFont, .foregroundColor: NSColor.secondaryLabelColor]
             )
+            applySingleLineDisplay(button: button, text: text)
+        }
+    }
+
+    private func applyTwoLineDisplay(button: NSStatusBarButton, labelLine: NSAttributedString, valueLine: NSAttributedString) {
+        let labelSize = labelLine.size()
+        let valueSize = valueLine.size()
+        let width = ceil(max(labelSize.width, valueSize.width)) + 8
+        let barHeight = NSStatusBar.system.thickness
+
+        statusItem.length = width
+
+        if menuBarView == nil {
+            let view = MenuBarStatusView(frame: NSRect(x: 0, y: 0, width: width, height: barHeight))
+            button.addSubview(view)
+            menuBarView = view
         }
 
+        menuBarView?.frame = NSRect(x: 0, y: 0, width: width, height: barHeight)
+        menuBarView?.labelLine = labelLine
+        menuBarView?.valueLine = valueLine
+        menuBarView?.isHidden = false
+        menuBarView?.needsDisplay = true
+        button.attributedTitle = NSAttributedString()
+    }
+
+    private func applySingleLineDisplay(button: NSStatusBarButton, text: NSAttributedString) {
+        menuBarView?.isHidden = true
+        statusItem.length = NSStatusItem.variableLength
+        button.attributedTitle = text
     }
 
     /// Usage percentage to NSColor: green < 60%, yellow 60-80%, red > 80%.

@@ -139,6 +139,12 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
     private var updateTimer: Timer?
     private var scrapeTimer: Timer?
 
+    /// Tracks when the browser page was last reloaded.
+    private var lastPageReloadDate: Date = .distantPast
+
+    /// How often to do a full page reload (seconds). Regular scrapes just read the DOM.
+    private let pageReloadInterval: TimeInterval = 60
+
     // MARK: - Init
 
     init(
@@ -308,19 +314,28 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         guard scrapeIntervalSeconds > 0 else { return }
         // Fire immediately on start
         scrapeQuietly()
+    }
+
+    private func restartScrapeTimer() {
+        scrapeTimer?.invalidate()
+        startScrapeTimer()
+    }
+
+    /// Schedule the next scrape after `scrapeIntervalSeconds` from now.
+    /// Uses a one-shot timer so the interval is measured from completion of
+    /// the previous scrape, not from a fixed repeating clock.
+    private func scheduleNextScrape() {
+        scrapeTimer?.invalidate()
+        guard scrapeIntervalSeconds > 0 else { return }
         let timer = Timer(
             timeInterval: TimeInterval(scrapeIntervalSeconds),
             target: self,
             selector: #selector(scrapeTimerFired),
             userInfo: nil,
-            repeats: true
+            repeats: false
         )
         RunLoop.main.add(timer, forMode: .common)
         scrapeTimer = timer
-    }
-
-    private func restartScrapeTimer() {
-        startScrapeTimer()
     }
 
     @objc private func scrapeTimerFired() {
@@ -328,21 +343,31 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
     }
 
     /// Scrape without showing success/error banners (background refresh).
+    ///
+    /// Two-tier strategy to support fast intervals (e.g. 5 seconds):
+    /// - Most cycles: just read the current DOM (fast, <1s). The SPA keeps
+    ///   the "Resets in" countdown live, so #m stays accurate.
+    /// - Every `pageReloadInterval` seconds: reload the page first to fetch
+    ///   fresh percentage data from the server, then scrape.
     private func scrapeQuietly() {
         guard !isScraping else { return }
         isScraping = true
+        let needsReload = Date().timeIntervalSince(lastPageReloadDate) >= pageReloadInterval
         Task {
             do {
-                let data = try await browserScraper.scrape(url: self.scrapeSourceURL)
+                let data = try await browserScraper.scrape(url: self.scrapeSourceURL, reload: needsReload)
                 await MainActor.run {
+                    if needsReload { self.lastPageReloadDate = Date() }
                     self.applyScrapedData(data)
                     self.isScraping = false
                     self.scrapeError = nil
+                    self.scheduleNextScrape()
                 }
             } catch {
                 await MainActor.run {
                     self.isScraping = false
                     // Don't show errors for background scrapes
+                    self.scheduleNextScrape()
                 }
             }
         }

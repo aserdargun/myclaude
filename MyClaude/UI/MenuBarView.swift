@@ -339,7 +339,7 @@ struct MenuBarView: View {
 
     private static let shortDayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 
-    /// Day name labels centered within each segment between vertical markers
+    /// Day name and target % labels centered within each segment between vertical markers
     private var targetLabelsRow: some View {
         GeometryReader { geometry in
             let targets = viewModel.dailyTargets
@@ -350,13 +350,18 @@ struct MenuBarView: View {
                 let xStart = geometry.size.width * Double(segStart) / 100.0
                 let xEnd = geometry.size.width * Double(segEnd) / 100.0
                 let isCurrentDay = (i == dayIndex)
-                Text(Self.shortDayNames[i])
-                    .font(.system(size: 7))
-                    .foregroundStyle(isCurrentDay ? .red : .secondary)
-                    .position(x: (xStart + xEnd) / 2, y: geometry.size.height / 2)
+                VStack(spacing: 0) {
+                    Text(Self.shortDayNames[i])
+                        .font(.system(size: 7))
+                        .foregroundStyle(isCurrentDay ? .red : .secondary)
+                    Text("\(targets[i])%")
+                        .font(.system(size: 6))
+                        .foregroundStyle(isCurrentDay ? .red.opacity(0.7) : .tertiary)
+                }
+                .position(x: (xStart + xEnd) / 2, y: geometry.size.height / 2)
             }
         }
-        .frame(height: 12)
+        .frame(height: 20)
     }
 
     /// Current day index where Sunday=0, Saturday=6

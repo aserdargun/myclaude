@@ -1,5 +1,34 @@
 import Foundation
 
+// MARK: - Cached DateFormatters
+
+/// Cached formatters to avoid repeated allocation on every call.
+private enum DateFormatters {
+    static let shortTime: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        return f
+    }()
+
+    static let shortDate: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "MMM d"
+        return f
+    }()
+
+    static let dayOfWeek: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "EEE"
+        return f
+    }()
+
+    static let shortDateTime: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "MMM d, HH:mm"
+        return f
+    }()
+}
+
 extension Date {
     var startOfDay: Date {
         Calendar.current.startOfDay(for: self)
@@ -20,27 +49,19 @@ extension Date {
     }
 
     var shortTimeString: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm"
-        return formatter.string(from: self)
+        DateFormatters.shortTime.string(from: self)
     }
 
     var shortDateString: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMM d"
-        return formatter.string(from: self)
+        DateFormatters.shortDate.string(from: self)
     }
 
     var dayOfWeekString: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "EEE"
-        return formatter.string(from: self)
+        DateFormatters.dayOfWeek.string(from: self)
     }
 
     var shortDateTimeString: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMM d, HH:mm"
-        return formatter.string(from: self)
+        DateFormatters.shortDateTime.string(from: self)
     }
 }
 

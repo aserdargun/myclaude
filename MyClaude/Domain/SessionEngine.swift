@@ -47,7 +47,7 @@ final class SessionEngine {
     func processEvents(_ events: [UsageEvent]) {
         var addedNew = false
         for event in events {
-            let key = "\(event.timestamp.timeIntervalSince1970)-\(event.tokens ?? 0)"
+            let key = event.id.uuidString
             if seenEventIDs.insert(key).inserted {
                 allEvents.append(event)
                 addedNew = true
@@ -125,12 +125,11 @@ final class SessionEngine {
         // With Pro/Max subscription there's always an active period — when one
         // expires, the next one starts immediately.
         if let calibratedStart = calibratedSessionStart {
-            // Step forward through 5h periods to find the one containing "now"
-            var periodStart = calibratedStart
-            while periodStart.addingTimeInterval(sessionDuration) <= now {
-                periodStart = periodStart.addingTimeInterval(sessionDuration)
-            }
-            // Update stored start so we don't re-walk every tick
+            // Jump directly to the period containing "now" using arithmetic
+            let elapsed = now.timeIntervalSince(calibratedStart)
+            let periodsElapsed = max(0, Int(elapsed / sessionDuration))
+            let periodStart = calibratedStart.addingTimeInterval(Double(periodsElapsed) * sessionDuration)
+            // Update stored start so we don't recalculate every tick
             calibratedSessionStart = periodStart
 
             let periodEnd = periodStart.addingTimeInterval(sessionDuration)

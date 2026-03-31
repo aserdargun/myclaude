@@ -356,7 +356,7 @@ struct MenuBarView: View {
                         .foregroundStyle(isCurrentDay ? .red : .secondary)
                     Text("\(targets[i])%")
                         .font(.system(size: 6))
-                        .foregroundStyle(isCurrentDay ? .red.opacity(0.7) : .tertiary)
+                        .foregroundColor(isCurrentDay ? .red.opacity(0.7) : .secondary.opacity(0.6))
                 }
                 .position(x: (xStart + xEnd) / 2, y: geometry.size.height / 2)
             }

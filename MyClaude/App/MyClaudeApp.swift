@@ -1,28 +1,57 @@
 import SwiftUI
 import AppKit
 
-/// Custom NSView for drawing two lines of text in the menubar.
+/// Custom NSView for drawing column-aligned two-line text in the menubar.
 /// Uses manual frame-based drawing — no Auto Layout to avoid
 /// layout recursion inside NSStatusBarButton.
 private class MenuBarStatusView: NSView {
-    var labelLine: NSAttributedString?
-    var valueLine: NSAttributedString?
+
+    struct Column {
+        let label: NSAttributedString
+        let value: NSAttributedString
+    }
+
+    var columns: [Column] = []
+    var separator: NSAttributedString?
 
     override func draw(_ dirtyRect: NSRect) {
-        guard let labelLine, let valueLine else { return }
+        guard !columns.isEmpty else { return }
 
-        let labelSize = labelLine.size()
-        let valueSize = valueLine.size()
-        let totalHeight = labelSize.height + valueSize.height
+        let sepWidth = separator?.size().width ?? 0
+
+        // Each column is as wide as the wider of its label and value
+        let colWidths: [CGFloat] = columns.map { max($0.label.size().width, $0.value.size().width) }
+        let totalWidth = colWidths.reduce(0, +) + sepWidth * CGFloat(columns.count - 1)
+
+        let labelHeight = columns[0].label.size().height
+        let valueHeight = columns[0].value.size().height
+        let totalHeight = labelHeight + valueHeight
         let topPad = (bounds.height - totalHeight) / 2
 
-        // Label (top), centered horizontally
-        let labelX = (bounds.width - labelSize.width) / 2
-        labelLine.draw(at: NSPoint(x: labelX, y: bounds.height - topPad - labelSize.height))
+        let labelY = bounds.height - topPad - labelHeight
+        let valueY = labelY - valueHeight
 
-        // Values (below label), centered horizontally
-        let valueX = (bounds.width - valueSize.width) / 2
-        valueLine.draw(at: NSPoint(x: valueX, y: bounds.height - topPad - labelSize.height - valueSize.height))
+        var x = (bounds.width - totalWidth) / 2
+
+        for (i, col) in columns.enumerated() {
+            let colW = colWidths[i]
+
+            // Center label within column
+            let lw = col.label.size().width
+            col.label.draw(at: NSPoint(x: x + (colW - lw) / 2, y: labelY))
+
+            // Center value within column
+            let vw = col.value.size().width
+            col.value.draw(at: NSPoint(x: x + (colW - vw) / 2, y: valueY))
+
+            x += colW
+
+            // Draw separator between columns (aligned with value row)
+            if i < columns.count - 1, let sep = separator {
+                sep.draw(at: NSPoint(x: x, y: valueY))
+                x += sepWidth
+            }
+        }
     }
 
     override func mouseDown(with event: NSEvent) {
@@ -200,60 +229,57 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let labelFontSize: CGFloat = 7
         let valueFont = NSFont.monospacedDigitSystemFont(ofSize: valueFontSize, weight: .medium)
         let labelFont = NSFont.systemFont(ofSize: labelFontSize, weight: .regular)
-        let labelColor = NSColor.secondaryLabelColor
 
         if viewModel.isSessionActive {
             let mins = Int(viewModel.remainingTime / 60)
             let sessionPct = viewModel.estimatedSessionPercent
             let weeklyPct = viewModel.estimatedWeeklyPercent
 
-            // -- Label row --
-            let labelLine = NSAttributedString(
-                string: "Resets in - Session - Weekly",
-                attributes: [.font: labelFont, .foregroundColor: labelColor]
+            // -- Column 1: Resets in / {mins}m --
+            let timeColor = nsColorForTime()
+            let col1 = MenuBarStatusView.Column(
+                label: NSAttributedString(string: "Resets in", attributes: [.font: labelFont, .foregroundColor: timeColor]),
+                value: NSAttributedString(string: "\(mins)m", attributes: [.font: valueFont, .foregroundColor: timeColor])
             )
 
-            // -- Value row (colored) --
-            let valueLine = NSMutableAttributedString()
-            let timeColor = nsColorForTime()
-            valueLine.append(NSAttributedString(
-                string: "\(mins)m",
-                attributes: [.font: valueFont, .foregroundColor: timeColor]
-            ))
+            // -- Column 2: Session / {pct}% --
+            let sessionColor: NSColor
+            let sessionValue: String
+            if let pct = sessionPct {
+                let val = Int(min(pct, 100))
+                sessionColor = usageNSColor(val)
+                sessionValue = "\(val)%"
+            } else {
+                sessionColor = NSColor.secondaryLabelColor
+                sessionValue = "-"
+            }
+            let col2 = MenuBarStatusView.Column(
+                label: NSAttributedString(string: "Session", attributes: [.font: labelFont, .foregroundColor: sessionColor]),
+                value: NSAttributedString(string: sessionValue, attributes: [.font: valueFont, .foregroundColor: sessionColor])
+            )
+
+            // -- Column 3: Weekly / {pct}% --
+            let weeklyColor: NSColor
+            let weeklyValue: String
+            if let pct = weeklyPct {
+                let val = Int(min(pct, 100))
+                weeklyColor = usageNSColor(val)
+                weeklyValue = "\(val)%"
+            } else {
+                weeklyColor = NSColor.secondaryLabelColor
+                weeklyValue = "-"
+            }
+            let col3 = MenuBarStatusView.Column(
+                label: NSAttributedString(string: "Weekly", attributes: [.font: labelFont, .foregroundColor: weeklyColor]),
+                value: NSAttributedString(string: weeklyValue, attributes: [.font: valueFont, .foregroundColor: weeklyColor])
+            )
+
             let sep = NSAttributedString(
                 string: "-",
                 attributes: [.font: valueFont, .foregroundColor: NSColor.secondaryLabelColor]
             )
-            valueLine.append(sep)
 
-            if let pct = sessionPct {
-                let val = Int(min(pct, 100))
-                valueLine.append(NSAttributedString(
-                    string: "\(val)%",
-                    attributes: [.font: valueFont, .foregroundColor: usageNSColor(val)]
-                ))
-            } else {
-                valueLine.append(NSAttributedString(
-                    string: "-",
-                    attributes: [.font: valueFont, .foregroundColor: NSColor.secondaryLabelColor]
-                ))
-            }
-            valueLine.append(sep)
-
-            if let pct = weeklyPct {
-                let val = Int(min(pct, 100))
-                valueLine.append(NSAttributedString(
-                    string: "\(val)%",
-                    attributes: [.font: valueFont, .foregroundColor: usageNSColor(val)]
-                ))
-            } else {
-                valueLine.append(NSAttributedString(
-                    string: "-",
-                    attributes: [.font: valueFont, .foregroundColor: NSColor.secondaryLabelColor]
-                ))
-            }
-
-            applyTwoLineDisplay(button: button, labelLine: labelLine, valueLine: valueLine)
+            applyTwoLineDisplay(button: button, columns: [col1, col2, col3], separator: sep)
 
         } else if viewModel.hasSession {
             let text = NSAttributedString(
@@ -270,10 +296,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
 
-    private func applyTwoLineDisplay(button: NSStatusBarButton, labelLine: NSAttributedString, valueLine: NSAttributedString) {
-        let labelSize = labelLine.size()
-        let valueSize = valueLine.size()
-        let width = ceil(max(labelSize.width, valueSize.width)) + 8
+    private func applyTwoLineDisplay(button: NSStatusBarButton, columns: [MenuBarStatusView.Column], separator: NSAttributedString) {
+        let sepWidth = separator.size().width
+        let colWidths: [CGFloat] = columns.map { max($0.label.size().width, $0.value.size().width) }
+        let totalWidth = colWidths.reduce(0, +) + sepWidth * CGFloat(columns.count - 1)
+        let width = ceil(totalWidth) + 8
         let barHeight = NSStatusBar.system.thickness
 
         statusItem.length = width
@@ -285,8 +312,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
 
         menuBarView?.frame = NSRect(x: 0, y: 0, width: width, height: barHeight)
-        menuBarView?.labelLine = labelLine
-        menuBarView?.valueLine = valueLine
+        menuBarView?.columns = columns
+        menuBarView?.separator = separator
         menuBarView?.isHidden = false
         menuBarView?.needsDisplay = true
         button.attributedTitle = NSAttributedString()

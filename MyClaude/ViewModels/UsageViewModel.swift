@@ -420,6 +420,8 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
     }
 
     /// Detects when the 5h period has changed since last calibration.
+    /// Auto-recalibrates session to 0% for the new period so the menubar
+    /// immediately reflects the reset instead of showing stale data.
     private func checkPeriodChange() {
         guard let cal = calibrationManager.currentCalibration else {
             calibrationPeriodChanged = false
@@ -437,12 +439,32 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         // Compute period that was active at calibration time
         let elapsedCal = cal.calibratedAt.timeIntervalSince(cal.sessionStartTime)
         let calPeriodIndex = max(0, Int(elapsedCal / duration))
-        let calPeriodStart = cal.sessionStartTime.addingTimeInterval(Double(calPeriodIndex) * duration)
 
-        // If period changed, flag it
-        if periodStart != calPeriodStart && !calibrationPeriodChanged {
+        // If period changed, auto-recalibrate session to 0% for the new period
+        if currentPeriodIndex != calPeriodIndex && !calibrationPeriodChanged {
             calibrationPeriodChanged = true
-            // Send notification
+
+            // Get current tokens in the new period (should be ~0)
+            let periodUsage = aggregator.usage(
+                from: periodStart,
+                to: periodStart.addingTimeInterval(duration)
+            )
+
+            // Re-calibrate with session at 0% but preserve weekly data
+            _ = calibrationManager.calibrate(
+                sessionStartTime: cal.sessionStartTime,
+                sessionPercentage: 0,
+                weeklyPercentage: cal.weeklyPercentage,
+                todayTokens: todayStats.totalTokens,
+                weeklyTokens: weeklyStats.totalTokens,
+                sessionTokens: periodUsage.tokens,
+                sessionWeightedTokens: periodUsage.weightedTokens,
+                weeklyWeightedTokens: cal.weeklyWeightedTokensAtCalibration
+            )
+
+            // Update session engine to use the new period
+            sessionEngine.overrideSessionStart(periodStart)
+
             alertEngine.sendRecalibrationReminder(reason: "New 5h period started")
         }
     }

@@ -337,19 +337,23 @@ struct MenuBarView: View {
         }
     }
 
-    /// Labels showing cumulative target % below each vertical marker
+    private static let shortDayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+
+    /// Day name labels centered within each segment between vertical markers
     private var targetLabelsRow: some View {
         GeometryReader { geometry in
             let targets = viewModel.dailyTargets
             let dayIndex = currentSundayBasedDayIndex
-            ForEach(0..<targets.count - 1, id: \.self) { i in
-                let cumulative = targets.prefix(i + 1).reduce(0, +)
-                let xPos = geometry.size.width * Double(cumulative) / 100.0
+            ForEach(0..<targets.count, id: \.self) { i in
+                let segStart = i == 0 ? 0 : targets.prefix(i).reduce(0, +)
+                let segEnd = targets.prefix(i + 1).reduce(0, +)
+                let xStart = geometry.size.width * Double(segStart) / 100.0
+                let xEnd = geometry.size.width * Double(segEnd) / 100.0
                 let isCurrentDay = (i == dayIndex)
-                Text("\(cumulative)")
+                Text(Self.shortDayNames[i])
                     .font(.system(size: 7))
                     .foregroundStyle(isCurrentDay ? .red : .secondary)
-                    .position(x: xPos, y: geometry.size.height / 2)
+                    .position(x: (xStart + xEnd) / 2, y: geometry.size.height / 2)
             }
         }
         .frame(height: 12)

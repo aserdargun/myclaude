@@ -211,6 +211,14 @@ final class BrowserScraper {
                 delay(1);
                 maxWait--;
             }
+            // Wait for SPA content to render after page load
+            var contentWait = 10;
+            while (contentWait > 0) {
+                var check = tab.execute({javascript: 'document.body ? document.body.innerText : ""'});
+                if (check && check.indexOf('% used') !== -1) break;
+                delay(1);
+                contentWait--;
+            }
             var result = tab.execute({javascript: \(scrapeJS.jxaEscaped)});
             return result;
         })()
@@ -241,6 +249,14 @@ final class BrowserScraper {
                             while (tabs[j].loading() && maxWait > 0) {
                                 delay(1);
                                 maxWait--;
+                            }
+                            // Wait for SPA content to render after page load
+                            var contentWait = 10;
+                            while (contentWait > 0) {
+                                var check = tabs[j].execute({javascript: 'document.body ? document.body.innerText : ""'});
+                                if (check && check.indexOf('% used') !== -1) break;
+                                delay(1);
+                                contentWait--;
                             }
                         }
                         var result = tabs[j].execute({javascript: \(scrapeJS.jxaEscaped)});

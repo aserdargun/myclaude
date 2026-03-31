@@ -66,6 +66,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             object: nil
         )
 
+        // Refresh menubar title immediately when scrape data arrives
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(updateMenuBarTitle),
+            name: .scrapeDataDidUpdate,
+            object: nil
+        )
+
         // Start view model
         viewModel.start()
 

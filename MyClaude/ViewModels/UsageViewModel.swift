@@ -297,6 +297,8 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
             )
             updateUIState()
         }
+        // Notify menubar to refresh immediately with new data
+        NotificationCenter.default.post(name: .scrapeDataDidUpdate, object: nil)
     }
 
     // MARK: - Browser Scrape Timer

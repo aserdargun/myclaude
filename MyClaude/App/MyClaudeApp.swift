@@ -1,6 +1,35 @@
 import SwiftUI
 import AppKit
 
+/// Custom NSView for drawing two lines of text in the menubar.
+/// Uses manual frame-based drawing — no Auto Layout to avoid
+/// layout recursion inside NSStatusBarButton.
+private class MenuBarStatusView: NSView {
+    var labelLine: NSAttributedString?
+    var valueLine: NSAttributedString?
+
+    override func draw(_ dirtyRect: NSRect) {
+        guard let labelLine, let valueLine else { return }
+
+        let labelSize = labelLine.size()
+        let valueSize = valueLine.size()
+        let totalHeight = labelSize.height + valueSize.height
+        let topPad = (bounds.height - totalHeight) / 2
+
+        // Label (top), centered horizontally
+        let labelX = (bounds.width - labelSize.width) / 2
+        labelLine.draw(at: NSPoint(x: labelX, y: bounds.height - topPad - labelSize.height))
+
+        // Values (below label), centered horizontally
+        let valueX = (bounds.width - valueSize.width) / 2
+        valueLine.draw(at: NSPoint(x: valueX, y: bounds.height - topPad - labelSize.height - valueSize.height))
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        superview?.mouseDown(with: event)
+    }
+}
+
 /// Floating panel that behaves like MenuBarExtra's .window style:
 /// - Closes when clicking outside or when the app deactivates
 /// - Non-activating (doesn't steal focus from other apps)
@@ -34,9 +63,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var updateTimer: Timer?
     private var activity: NSObjectProtocol?
 
-    /// Two-line menubar labels
-    private var labelField: NSTextField?
-    private var valueField: NSTextField?
+    /// Two-line menubar custom view
+    private var menuBarView: MenuBarStatusView?
 
     static func main() {
         let app = NSApplication.shared
@@ -60,48 +88,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if let button = statusItem.button {
             button.target = self
             button.action = #selector(togglePanel)
-
-            // Set up two-line display: label on top, values below
-            let container = NSView()
-            container.translatesAutoresizingMaskIntoConstraints = false
-
-            let label = NSTextField(labelWithString: "")
-            label.translatesAutoresizingMaskIntoConstraints = false
-            label.isEditable = false
-            label.isBordered = false
-            label.drawsBackground = false
-            label.alignment = .center
-            label.maximumNumberOfLines = 1
-            labelField = label
-
-            let value = NSTextField(labelWithString: "")
-            value.translatesAutoresizingMaskIntoConstraints = false
-            value.isEditable = false
-            value.isBordered = false
-            value.drawsBackground = false
-            value.alignment = .center
-            value.maximumNumberOfLines = 1
-            valueField = value
-
-            container.addSubview(label)
-            container.addSubview(value)
-            button.addSubview(container)
-
-            NSLayoutConstraint.activate([
-                container.leadingAnchor.constraint(equalTo: button.leadingAnchor, constant: 4),
-                container.trailingAnchor.constraint(equalTo: button.trailingAnchor, constant: -4),
-                container.centerYAnchor.constraint(equalTo: button.centerYAnchor),
-
-                label.topAnchor.constraint(equalTo: container.topAnchor),
-                label.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-                label.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-
-                value.topAnchor.constraint(equalTo: label.bottomAnchor, constant: -1),
-                value.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-                value.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-                value.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-            ])
-
             updateMenuBarTitle()
         }
 
@@ -208,8 +194,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     @objc private func updateMenuBarTitle() {
-        guard let button = statusItem.button,
-              let labelField, let valueField else { return }
+        guard let button = statusItem.button else { return }
 
         let valueFontSize: CGFloat = 9
         let labelFontSize: CGFloat = 7
@@ -222,16 +207,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             let sessionPct = viewModel.estimatedSessionPercent
             let weeklyPct = viewModel.estimatedWeeklyPercent
 
-            // -- Label row (static) --
-            labelField.attributedStringValue = NSAttributedString(
+            // -- Label row --
+            let labelLine = NSAttributedString(
                 string: "Resets in - Session - Weekly",
                 attributes: [.font: labelFont, .foregroundColor: labelColor]
             )
-            labelField.isHidden = false
 
-            // -- Value row (dynamic, colored) --
+            // -- Value row (colored) --
             let valueLine = NSMutableAttributedString()
-
             let timeColor = nsColorForTime()
             valueLine.append(NSAttributedString(
                 string: "\(mins)m",
@@ -270,24 +253,49 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 ))
             }
 
-            valueField.attributedStringValue = valueLine
-            button.title = String(repeating: " ", count: 20) // reserve width
+            applyTwoLineDisplay(button: button, labelLine: labelLine, valueLine: valueLine)
 
         } else if viewModel.hasSession {
-            labelField.isHidden = true
-            valueField.attributedStringValue = NSAttributedString(
+            let text = NSAttributedString(
                 string: "Expired",
                 attributes: [.font: valueFont, .foregroundColor: NSColor.secondaryLabelColor]
             )
-            button.title = String(repeating: " ", count: 10)
+            applySingleLineDisplay(button: button, text: text)
         } else {
-            labelField.isHidden = true
-            valueField.attributedStringValue = NSAttributedString(
+            let text = NSAttributedString(
                 string: "No session",
                 attributes: [.font: valueFont, .foregroundColor: NSColor.secondaryLabelColor]
             )
-            button.title = String(repeating: " ", count: 10)
+            applySingleLineDisplay(button: button, text: text)
         }
+    }
+
+    private func applyTwoLineDisplay(button: NSStatusBarButton, labelLine: NSAttributedString, valueLine: NSAttributedString) {
+        let labelSize = labelLine.size()
+        let valueSize = valueLine.size()
+        let width = ceil(max(labelSize.width, valueSize.width)) + 8
+        let barHeight = NSStatusBar.system.thickness
+
+        statusItem.length = width
+
+        if menuBarView == nil {
+            let view = MenuBarStatusView(frame: NSRect(x: 0, y: 0, width: width, height: barHeight))
+            button.addSubview(view)
+            menuBarView = view
+        }
+
+        menuBarView?.frame = NSRect(x: 0, y: 0, width: width, height: barHeight)
+        menuBarView?.labelLine = labelLine
+        menuBarView?.valueLine = valueLine
+        menuBarView?.isHidden = false
+        menuBarView?.needsDisplay = true
+        button.attributedTitle = NSAttributedString()
+    }
+
+    private func applySingleLineDisplay(button: NSStatusBarButton, text: NSAttributedString) {
+        menuBarView?.isHidden = true
+        statusItem.length = NSStatusItem.variableLength
+        button.attributedTitle = text
     }
 
     /// Usage percentage to NSColor: green < 60%, yellow 60-80%, red > 80%.

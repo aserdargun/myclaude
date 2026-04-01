@@ -112,8 +112,17 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         return sessionProgress
     }
 
-    /// Display string for session percentage.
-    var sessionPercentDisplay: String {
+    /// Display remaining time. When the current period has no usage (0% and no events),
+    /// no real session has started yet, so show the full 5h duration instead of the
+    /// countdown from the calibration grid period.
+    var displayRemainingTime: TimeInterval {
+        if currentEventCount == 0, let pct = estimatedSessionPercent, pct <= 0 {
+            return Constants.sessionDuration
+        }
+        return remainingTime
+    }
+
+    /// Display string for session percentage.    var sessionPercentDisplay: String {
         if let pct = estimatedSessionPercent {
             return "\(Int(min(pct, 100)))%"
         }

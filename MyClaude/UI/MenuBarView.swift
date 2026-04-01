@@ -141,7 +141,7 @@ struct MenuBarView: View {
             if viewModel.isSessionActive {
                 // Active session
                 HStack {
-                    Text("Resets in \(viewModel.remainingTime.compactRemaining)")
+                    Text("Resets in \(viewModel.displayRemainingTime.compactRemaining)")
                         .font(.title3)
                         .fontWeight(.semibold)
                         .foregroundStyle(viewModel.statusColor)

@@ -239,7 +239,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let labelFont = NSFont.systemFont(ofSize: labelFontSize, weight: .regular)
 
         if viewModel.isSessionActive {
-            let mins = Int(viewModel.remainingTime / 60)
+            let mins = Int(viewModel.displayRemainingTime / 60)
             let sessionPct = viewModel.estimatedSessionPercent
             let weeklyPct = viewModel.estimatedWeeklyPercent
 

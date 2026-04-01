@@ -122,7 +122,8 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         return remainingTime
     }
 
-    /// Display string for session percentage.    var sessionPercentDisplay: String {
+    /// Display string for session percentage.
+    var sessionPercentDisplay: String {
         if let pct = estimatedSessionPercent {
             return "\(Int(min(pct, 100)))%"
         }

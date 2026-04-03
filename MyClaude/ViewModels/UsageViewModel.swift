@@ -69,31 +69,11 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
 
     // MARK: - Calibration state
 
-    /// Tracks which 5h period was active at last calibration, to detect period changes.
-    private var lastCalibratedPeriodStart: Date?
-
-    /// Set to true when the 5h period has changed since last calibration.
-    var calibrationPeriodChanged: Bool = false
+    /// Tracks whether a period change has already been handled to avoid re-triggering.
+    private var periodChangeHandled: Bool = false
 
     var calibrationData: CalibrationData? {
         calibrationManager.currentCalibration
-    }
-
-    /// How long ago the user last calibrated.
-    var calibrationAge: TimeInterval? {
-        guard let cal = calibrationManager.currentCalibration else { return nil }
-        return Date().timeIntervalSince(cal.calibratedAt)
-    }
-
-    /// Whether calibration is stale (>1 hour old).
-    var isCalibrationStale: Bool {
-        guard let age = calibrationAge else { return false }
-        return age > Constants.recalibrationInterval
-    }
-
-    /// Whether calibration needs attention (stale or period changed).
-    var needsRecalibration: Bool {
-        isCalibrationStale || calibrationPeriodChanged
     }
 
     var estimatedSessionPercent: Double? {
@@ -260,7 +240,7 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
 
         // Override session engine with the CURRENT period's start, not the first session
         sessionEngine.overrideSessionStart(periodStart)
-        calibrationPeriodChanged = false
+        periodChangeHandled = false
         alertEngine.resetAlerts()
         updateUIState()
     }
@@ -430,11 +410,11 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
     }
 
     /// Detects when the 5h period has changed since last calibration.
-    /// Auto-recalibrates session to 0% for the new period so the menubar
-    /// immediately reflects the reset instead of showing stale data.
+    /// Auto-recalibrates session to 0% and triggers an immediate browser
+    /// scrape to fetch fresh data from claude.ai.
     private func checkPeriodChange() {
         guard let cal = calibrationManager.currentCalibration else {
-            calibrationPeriodChanged = false
+            periodChangeHandled = false
             return
         }
 
@@ -450,9 +430,9 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         let elapsedCal = cal.calibratedAt.timeIntervalSince(cal.sessionStartTime)
         let calPeriodIndex = max(0, Int(elapsedCal / duration))
 
-        // If period changed, auto-recalibrate session to 0% for the new period
-        if currentPeriodIndex != calPeriodIndex && !calibrationPeriodChanged {
-            calibrationPeriodChanged = true
+        // If period changed, auto-recalibrate session to 0% and scrape fresh data
+        if currentPeriodIndex != calPeriodIndex && !periodChangeHandled {
+            periodChangeHandled = true
 
             // Get current tokens in the new period (should be ~0)
             let periodUsage = aggregator.usage(
@@ -474,8 +454,10 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
 
             // Update session engine to use the new period
             sessionEngine.overrideSessionStart(periodStart)
+            alertEngine.resetAlerts()
 
-            alertEngine.sendRecalibrationReminder(reason: "New 5h period started")
+            // Trigger immediate scrape to get fresh data from browser
+            scrapeQuietly()
         }
     }
 

@@ -92,15 +92,18 @@ final class MyClaudeLogParser: ParserProtocol {
             let output = usage["output_tokens"] as? Int ?? 0
             let cacheRead = usage["cache_read_input_tokens"] as? Int ?? 0
             let cacheCreation = usage["cache_creation_input_tokens"] as? Int ?? 0
-            let total = input + output + cacheRead + cacheCreation
-            if total > 0 {
+            // Raw total: only input + output (matches CLI display).
+            // Cache tokens are excluded from the display total — they represent
+            // re-reads of the cached prompt context and massively inflate counts.
+            let total = input + output
+            if total > 0 || cacheRead > 0 || cacheCreation > 0 {
                 let weighted = Int(
                     Double(output) * 1.0
                     + Double(input) * 0.25
                     + Double(cacheCreation) * 0.3125
                     + Double(cacheRead) * 0.025
                 )
-                return (total, weighted)
+                return (max(total, 1), weighted)
             }
         }
 

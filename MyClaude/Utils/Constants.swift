@@ -18,7 +18,6 @@ enum Constants {
     static let thirtyMinWarning: TimeInterval = 30 * 60
 
     // Calibration
-    static let recalibrationInterval: TimeInterval = 60 * 60 // 1 hour
     static let claudeUsageURL = "https://claude.ai/settings/usage"
 
     // Log paths — all known locations where Claude Code variants write JSONL logs.

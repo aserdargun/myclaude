@@ -70,31 +70,11 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
 
     // MARK: - Calibration state
 
-    /// Tracks which 5h period was active at last calibration, to detect period changes.
-    private var lastCalibratedPeriodStart: Date?
-
-    /// Set to true when the 5h period has changed since last calibration.
-    var calibrationPeriodChanged: Bool = false
+    /// Tracks whether a period change has already been handled to avoid re-triggering.
+    private var periodChangeHandled: Bool = false
 
     var calibrationData: CalibrationData? {
         calibrationManager.currentCalibration
-    }
-
-    /// How long ago the user last calibrated.
-    var calibrationAge: TimeInterval? {
-        guard let cal = calibrationManager.currentCalibration else { return nil }
-        return Date().timeIntervalSince(cal.calibratedAt)
-    }
-
-    /// Whether calibration is stale (>1 hour old).
-    var isCalibrationStale: Bool {
-        guard let age = calibrationAge else { return false }
-        return age > Constants.recalibrationInterval
-    }
-
-    /// Whether calibration needs attention (stale or period changed).
-    var needsRecalibration: Bool {
-        isCalibrationStale || calibrationPeriodChanged
     }
 
     var estimatedSessionPercent: Double? {
@@ -111,6 +91,16 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
             return min(1.0, pct / 100.0)
         }
         return sessionProgress
+    }
+
+    /// Display remaining time. When the current period has no usage (0% and no events),
+    /// no real session has started yet, so show the full 5h duration instead of the
+    /// countdown from the calibration grid period.
+    var displayRemainingTime: TimeInterval {
+        if currentEventCount == 0, let pct = estimatedSessionPercent, pct <= 0 {
+            return Constants.sessionDuration
+        }
+        return remainingTime
     }
 
     /// Display string for session percentage.
@@ -252,7 +242,7 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
 
         // Override session engine with the CURRENT period's start, not the first session
         sessionEngine.overrideSessionStart(periodStart)
-        calibrationPeriodChanged = false
+        periodChangeHandled = false
         alertEngine.resetAlerts()
         updateUIState()
     }
@@ -422,9 +412,11 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
     }
 
     /// Detects when the 5h period has changed since last calibration.
+    /// Auto-recalibrates session to 0% and triggers an immediate browser
+    /// scrape to fetch fresh data from claude.ai.
     private func checkPeriodChange() {
         guard let cal = calibrationManager.currentCalibration else {
-            calibrationPeriodChanged = false
+            periodChangeHandled = false
             return
         }
 
@@ -439,13 +431,35 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         // Compute period that was active at calibration time
         let elapsedCal = cal.calibratedAt.timeIntervalSince(cal.sessionStartTime)
         let calPeriodIndex = max(0, Int(elapsedCal / duration))
-        let calPeriodStart = cal.sessionStartTime.addingTimeInterval(Double(calPeriodIndex) * duration)
 
-        // If period changed, flag it
-        if periodStart != calPeriodStart && !calibrationPeriodChanged {
-            calibrationPeriodChanged = true
-            // Send notification
-            alertEngine.sendRecalibrationReminder(reason: "New 5h period started")
+        // If period changed, auto-recalibrate session to 0% and scrape fresh data
+        if currentPeriodIndex != calPeriodIndex && !periodChangeHandled {
+            periodChangeHandled = true
+
+            // Get current tokens in the new period (should be ~0)
+            let periodUsage = aggregator.usage(
+                from: periodStart,
+                to: periodStart.addingTimeInterval(duration)
+            )
+
+            // Re-calibrate with session at 0% but preserve weekly data
+            _ = calibrationManager.calibrate(
+                sessionStartTime: cal.sessionStartTime,
+                sessionPercentage: 0,
+                weeklyPercentage: cal.weeklyPercentage,
+                todayTokens: todayStats.totalTokens,
+                weeklyTokens: weeklyStats.totalTokens,
+                sessionTokens: periodUsage.tokens,
+                sessionWeightedTokens: periodUsage.weightedTokens,
+                weeklyWeightedTokens: cal.weeklyWeightedTokensAtCalibration
+            )
+
+            // Update session engine to use the new period
+            sessionEngine.overrideSessionStart(periodStart)
+            alertEngine.resetAlerts()
+
+            // Trigger immediate scrape to get fresh data from browser
+            scrapeQuietly()
         }
     }
 

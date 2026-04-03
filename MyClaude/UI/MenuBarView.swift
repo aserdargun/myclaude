@@ -93,11 +93,6 @@ struct MenuBarView: View {
             }
             .padding(.bottom, 4)
 
-            // Re-calibration reminder
-            if viewModel.needsRecalibration {
-                recalibrationBanner
-            }
-
             // Claude header (centered)
             HStack {
                 Spacer()
@@ -141,7 +136,7 @@ struct MenuBarView: View {
             if viewModel.isSessionActive {
                 // Active session
                 HStack {
-                    Text("Resets in \(viewModel.remainingTime.compactRemaining)")
+                    Text("Resets in \(viewModel.displayRemainingTime.compactRemaining)")
                         .font(.title3)
                         .fontWeight(.semibold)
                         .foregroundStyle(viewModel.statusColor)
@@ -207,55 +202,6 @@ struct MenuBarView: View {
     }
 
     // MARK: - Recalibration Banner
-
-    private var recalibrationBanner: some View {
-        Button {
-            viewModel.showSettings = true
-        } label: {
-            HStack(spacing: 6) {
-                Image(systemName: viewModel.calibrationPeriodChanged
-                      ? "exclamationmark.triangle.fill"
-                      : "clock.arrow.circlepath")
-                    .font(.caption)
-                    .foregroundStyle(viewModel.calibrationPeriodChanged ? .orange : .yellow)
-
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(viewModel.calibrationPeriodChanged
-                         ? "New period — re-calibrate"
-                         : "Calibration is \(calibrationAgeText) old")
-                        .font(.caption2)
-                        .fontWeight(.medium)
-                    Text("Update % from Claude settings")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-            }
-            .padding(8)
-            .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(viewModel.calibrationPeriodChanged
-                          ? Color.orange.opacity(0.1)
-                          : Color.yellow.opacity(0.1))
-            )
-        }
-        .buttonStyle(.borderless)
-    }
-
-    private var calibrationAgeText: String {
-        guard let age = viewModel.calibrationAge else { return "?" }
-        let hours = Int(age) / 3600
-        let minutes = (Int(age) % 3600) / 60
-        if hours > 0 {
-            return "\(hours)h \(minutes)m"
-        }
-        return "\(minutes)m"
-    }
 
     // MARK: - Weekly Limits Section
 
@@ -354,9 +300,9 @@ struct MenuBarView: View {
                     Text(Self.shortDayNames[i])
                         .font(.system(size: 7))
                         .foregroundStyle(isCurrentDay ? .red : .secondary)
-                    Text("\(targets[i])%")
-                        .font(.system(size: 6))
-                        .foregroundStyle(isCurrentDay ? .red.opacity(0.7) : .tertiary)
+                    Text("\(targets.prefix(i + 1).reduce(0, +))%")
+                        .font(.system(size: 8))
+                        .foregroundColor(isCurrentDay ? .red.opacity(0.7) : .secondary.opacity(0.6))
                 }
                 .position(x: (xStart + xEnd) / 2, y: geometry.size.height / 2)
             }
@@ -364,9 +310,11 @@ struct MenuBarView: View {
         .frame(height: 20)
     }
 
-    /// Current day index where Sunday=0, Saturday=6
+    /// Current day index where Sunday=0, Saturday=6.
+    /// Derived from viewModel.todayStats.date so SwiftUI re-evaluates
+    /// when the day changes (todayStats is updated by the UI timer).
     private var currentSundayBasedDayIndex: Int {
-        let weekday = Calendar.current.component(.weekday, from: Date())
+        let weekday = Calendar.current.component(.weekday, from: viewModel.todayStats.date)
         return weekday - 1  // Calendar weekday: 1=Sun, 2=Mon, ..., 7=Sat → 0-6
     }
 

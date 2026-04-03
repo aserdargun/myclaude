@@ -203,21 +203,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     @objc private func resizePanel() {
-        guard let panel, let hostingView, panel.isVisible else { return }
+        // Defer to next run loop iteration to avoid querying fittingSize
+        // while a layout pass is already in progress (causes layout recursion).
+        DispatchQueue.main.async { [weak self] in
+            guard let self, let panel = self.panel, let hostingView = self.hostingView, panel.isVisible else { return }
 
-        let panelWidth: CGFloat = 340
-        let fittingSize = hostingView.fittingSize
-        let newHeight = min(max(fittingSize.height, 300), 800)
+            let panelWidth: CGFloat = 340
+            let fittingSize = hostingView.fittingSize
+            let newHeight = min(max(fittingSize.height, 300), 800)
 
-        // Keep the top edge fixed: top = frame.maxY
-        let topEdge = panel.frame.maxY
-        let newY = topEdge - newHeight
-        let newFrame = NSRect(x: panel.frame.origin.x, y: newY, width: panelWidth, height: newHeight)
+            let topEdge = panel.frame.maxY
+            let newY = topEdge - newHeight
+            let newFrame = NSRect(x: panel.frame.origin.x, y: newY, width: panelWidth, height: newHeight)
 
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.2
-            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-            panel.animator().setFrame(newFrame, display: true)
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.2
+                context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                panel.animator().setFrame(newFrame, display: true)
+            }
         }
     }
 
@@ -236,7 +239,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let labelFont = NSFont.systemFont(ofSize: labelFontSize, weight: .regular)
 
         if viewModel.isSessionActive {
-            let mins = Int(viewModel.remainingTime / 60)
+            let mins = Int(viewModel.displayRemainingTime / 60)
             let sessionPct = viewModel.estimatedSessionPercent
             let weeklyPct = viewModel.estimatedWeeklyPercent
 

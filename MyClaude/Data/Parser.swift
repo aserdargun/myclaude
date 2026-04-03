@@ -103,7 +103,7 @@ final class MyClaudeLogParser: ParserProtocol {
                     + Double(cacheCreation) * 0.3125
                     + Double(cacheRead) * 0.025
                 )
-                return (max(total, 1), weighted)
+                return (total > 0 ? total : nil, weighted)
             }
         }
 

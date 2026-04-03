@@ -16,7 +16,7 @@ final class SessionEngine {
     /// All events ever received.
     private var allEvents: [UsageEvent] = []
 
-    /// Deduplication: maps message dedup key → index in allEvents.
+    /// Deduplication: maps dedup key → index in allEvents.
     private var seenEventKeys: [String: Int] = [:]
 
     private let sessionDuration: TimeInterval
@@ -49,7 +49,6 @@ final class SessionEngine {
         for event in events {
             let key = event.deduplicationKey
             if let existingIndex = seenEventKeys[key] {
-                // Same message seen again — keep the one with highest tokens
                 let existing = allEvents[existingIndex]
                 if (event.tokens ?? 0) > (existing.tokens ?? 0) {
                     allEvents[existingIndex] = event

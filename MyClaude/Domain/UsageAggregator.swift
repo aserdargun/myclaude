@@ -11,7 +11,6 @@ final class UsageAggregator {
         for event in events {
             let key = event.deduplicationKey
             if let existing = eventsByKey[key] {
-                // Same message — keep the one with highest token count
                 if (event.tokens ?? 0) > (existing.tokens ?? 0) {
                     eventsByKey[key] = event
                 }
@@ -19,7 +18,6 @@ final class UsageAggregator {
                 eventsByKey[key] = event
             }
         }
-        // Prune events older than 30 days
         let cutoff = Date().addingTimeInterval(-30 * 24 * 3600)
         eventsByKey = eventsByKey.filter { $0.value.timestamp >= cutoff }
         allEvents = eventsByKey.values.sorted { $0.timestamp < $1.timestamp }

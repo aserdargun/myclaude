@@ -11,8 +11,8 @@ enum EventType: String, Codable, Sendable {
 
 struct UsageEvent: Codable, Identifiable, Sendable {
     let id: UUID
-    /// The Claude API message ID (e.g. "msg_xxx") used for deduplication.
-    /// Multiple JSONL entries share the same messageId due to streaming.
+    /// The Claude API message ID (e.g. "msg_xxx") used for cross-file deduplication.
+    /// Multiple log sources (CLI + Desktop) may log the same API call.
     let messageId: String?
     let timestamp: Date
     let tokens: Int?
@@ -23,7 +23,7 @@ struct UsageEvent: Codable, Identifiable, Sendable {
     let model: String?
     let sessionId: String?
 
-    /// Key used for deduplication: messageId if available, otherwise UUID.
+    /// Key for deduplication: messageId if available, otherwise UUID.
     var deduplicationKey: String {
         messageId ?? id.uuidString
     }

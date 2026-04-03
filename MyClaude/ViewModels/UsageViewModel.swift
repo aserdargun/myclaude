@@ -47,6 +47,7 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         didSet {
             UserDefaults.standard.set(scrapeIntervalSeconds, forKey: "scrapeIntervalSeconds")
             restartScrapeTimer()
+            logReader.updatePollInterval(TimeInterval(scrapeIntervalSeconds))
         }
     }
 
@@ -173,6 +174,7 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
     func start() {
         alertEngine.requestNotificationPermission()
         restoreCalibration()
+        logReader.updatePollInterval(TimeInterval(scrapeIntervalSeconds))
         logReader.start()
         startUITimer()
         startScrapeTimer()

@@ -23,8 +23,12 @@ final class LogReader: @unchecked Sendable {
     /// 10 MB covers heavy usage sessions with many tokens.
     private let maxInitialReadBytes: UInt64 = 10 * 1024 * 1024
 
-    init(parser: ParserProtocol = MyClaudeLogParser()) {
+    /// Current poll interval in seconds.
+    private(set) var pollInterval: TimeInterval
+
+    init(parser: ParserProtocol = MyClaudeLogParser(), pollInterval: TimeInterval = Constants.logPollInterval) {
         self.parser = parser
+        self.pollInterval = pollInterval
     }
 
     deinit {
@@ -83,14 +87,24 @@ final class LogReader: @unchecked Sendable {
     private func startPolling() {
         let timer = DispatchSource.makeTimerSource(queue: queue)
         timer.schedule(
-            deadline: .now() + Constants.logPollInterval,
-            repeating: Constants.logPollInterval
+            deadline: .now() + pollInterval,
+            repeating: pollInterval
         )
         timer.setEventHandler { [weak self] in
             self?.scanAllLogs()
         }
         pollTimer = timer
         timer.resume()
+    }
+
+    /// Update the poll interval to match the user's refresh setting.
+    func updatePollInterval(_ interval: TimeInterval) {
+        guard interval > 0 else { return }
+        pollInterval = interval
+        // Restart the timer with the new interval
+        pollTimer?.cancel()
+        pollTimer = nil
+        startPolling()
     }
 
     // MARK: - Scanning

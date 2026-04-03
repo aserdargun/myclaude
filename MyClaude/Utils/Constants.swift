@@ -21,11 +21,21 @@ enum Constants {
     static let recalibrationInterval: TimeInterval = 60 * 60 // 1 hour
     static let claudeUsageURL = "https://claude.ai/settings/usage"
 
-    // Log paths — focus on projects directory where JSONL conversation logs live
+    // Log paths — all known locations where Claude Code variants write JSONL logs.
+    // Non-existent paths are silently skipped by LogReader.
     static var claudeLogPaths: [String] {
         let home = FileManager.default.homeDirectoryForCurrentUser.path
+        let appSupport = "\(home)/Library/Application Support"
         return [
-            "\(home)/.claude/projects"
+            // Claude Code CLI
+            "\(home)/.claude/projects",
+            // Claude Code Desktop app (macOS)
+            "\(appSupport)/Claude Code/projects",
+            "\(appSupport)/claude-code/projects",
+            "\(appSupport)/Claude/projects",
+            // Alternative dotfile locations
+            "\(home)/.claude-code/projects",
+            "\(home)/.claude-desktop/projects",
         ]
     }
 

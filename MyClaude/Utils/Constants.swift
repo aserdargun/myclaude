@@ -27,15 +27,12 @@ enum Constants {
         let home = FileManager.default.homeDirectoryForCurrentUser.path
         let appSupport = "\(home)/Library/Application Support"
         return [
-            // Claude Code CLI
+            // Claude Code CLI + VS Code / JetBrains extensions
             "\(home)/.claude/projects",
-            // Claude Code Desktop app (macOS)
-            "\(appSupport)/Claude Code/projects",
-            "\(appSupport)/claude-code/projects",
-            "\(appSupport)/Claude/projects",
-            // Alternative dotfile locations
-            "\(home)/.claude-code/projects",
-            "\(home)/.claude-desktop/projects",
+            // Claude Code Desktop app (current path)
+            "\(appSupport)/Claude/claude-code-sessions",
+            // Claude Code Desktop app (legacy path, pre-migration)
+            "\(appSupport)/Claude/local-agent-mode-sessions",
         ]
     }
 

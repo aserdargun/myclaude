@@ -20,18 +20,13 @@ enum Constants {
     // Calibration
     static let claudeUsageURL = "https://claude.ai/settings/usage"
 
-    // Log paths — all known locations where Claude Code variants write JSONL logs.
-    // Non-existent paths are silently skipped by LogReader.
+    // Log paths — only truly local JSONL logs (CLI + IDE extensions).
+    // Desktop app paths (~/Library/Application Support/Claude/claude-code-sessions/)
+    // are excluded because they sync sessions from ALL devices, inflating local counts.
     static var claudeLogPaths: [String] {
         let home = FileManager.default.homeDirectoryForCurrentUser.path
-        let appSupport = "\(home)/Library/Application Support"
         return [
-            // Claude Code CLI + VS Code / JetBrains extensions
             "\(home)/.claude/projects",
-            // Claude Code Desktop app (current path)
-            "\(appSupport)/Claude/claude-code-sessions",
-            // Claude Code Desktop app (legacy path, pre-migration)
-            "\(appSupport)/Claude/local-agent-mode-sessions",
         ]
     }
 

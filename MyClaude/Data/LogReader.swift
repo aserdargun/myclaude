@@ -141,7 +141,7 @@ final class LogReader: @unchecked Sendable {
             guard resourceValues.isRegularFile == true else { continue }
 
             let ext = fileURL.pathExtension.lowercased()
-            guard ext == "jsonl" else { continue }
+            guard ext == "jsonl" || ext == "json" else { continue }
 
             // Only read files modified in the last 7 days
             if let modDate = resourceValues.contentModificationDate,

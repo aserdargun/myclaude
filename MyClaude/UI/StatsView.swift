@@ -10,17 +10,21 @@ struct StatsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Session Usage
-            localHeader("Session Usage", icon: "chart.pie")
+            // Session Usage — only show when there's local data.
+            // When calibrated with 0 local events, session usage is already
+            // shown via browser scraping in the CLAUDE section above.
+            if currentTokens > 0 || currentEventCount > 0 || !hasCalibration {
+                localHeader("Session Usage", icon: "chart.pie")
 
-            StatRow(
-                label: hasCalibration ? "Local Tokens" : "Tokens",
-                value: formatTokens(currentTokens)
-            )
-            StatRow(
-                label: hasCalibration ? "Local Events" : "Events",
-                value: "\(currentEventCount)"
-            )
+                StatRow(
+                    label: hasCalibration ? "Local Tokens" : "Tokens",
+                    value: formatTokens(currentTokens)
+                )
+                StatRow(
+                    label: hasCalibration ? "Local Events" : "Events",
+                    value: "\(currentEventCount)"
+                )
+            }
 
             // Today
             localHeader("Today", icon: "calendar")

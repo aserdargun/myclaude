@@ -98,13 +98,16 @@ final class LogReader: @unchecked Sendable {
     }
 
     /// Update the poll interval to match the user's refresh setting.
+    /// Only restarts the timer if one is already running (after start() was called).
     func updatePollInterval(_ interval: TimeInterval) {
         guard interval > 0 else { return }
         pollInterval = interval
-        // Restart the timer with the new interval
-        pollTimer?.cancel()
-        pollTimer = nil
-        startPolling()
+        // Only restart if a timer is already active (avoid orphaned timers)
+        if pollTimer != nil {
+            pollTimer?.cancel()
+            pollTimer = nil
+            startPolling()
+        }
     }
 
     // MARK: - Scanning

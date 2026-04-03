@@ -2,16 +2,27 @@ import Foundation
 
 final class UsageAggregator {
     private var allEvents: [UsageEvent] = []
+    /// Deduplication: maps dedup key → event. Keeps highest-token entry per message.
+    private var eventsByKey: [String: UsageEvent] = [:]
 
     // MARK: - Add events
 
     func addEvents(_ events: [UsageEvent]) {
-        allEvents.append(contentsOf: events)
-        // Keep sorted
-        allEvents.sort { $0.timestamp < $1.timestamp }
+        for event in events {
+            let key = event.deduplicationKey
+            if let existing = eventsByKey[key] {
+                // Same message — keep the one with highest token count
+                if (event.tokens ?? 0) > (existing.tokens ?? 0) {
+                    eventsByKey[key] = event
+                }
+            } else {
+                eventsByKey[key] = event
+            }
+        }
         // Prune events older than 30 days
         let cutoff = Date().addingTimeInterval(-30 * 24 * 3600)
-        allEvents.removeAll { $0.timestamp < cutoff }
+        eventsByKey = eventsByKey.filter { $0.value.timestamp >= cutoff }
+        allEvents = eventsByKey.values.sorted { $0.timestamp < $1.timestamp }
     }
 
     // MARK: - Session stats

@@ -46,11 +46,13 @@ final class MyClaudeLogParser: ParserProtocol {
         let (tokens, weighted) = extractTokens(from: json, message: message)
         let model = message?["model"] as? String
         let sessionId = json["sessionId"] as? String
+        let messageId = message?["id"] as? String
 
         // Skip entries with no useful data (no timestamp and no tokens)
         guard timestamp != nil || tokens != nil else { return nil }
 
         return UsageEvent(
+            messageId: messageId,
             timestamp: timestamp ?? Date(),
             tokens: tokens,
             weightedTokens: weighted,

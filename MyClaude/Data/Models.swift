@@ -11,6 +11,9 @@ enum EventType: String, Codable, Sendable {
 
 struct UsageEvent: Codable, Identifiable, Sendable {
     let id: UUID
+    /// The Claude API message ID (e.g. "msg_xxx") used for cross-file deduplication.
+    /// Multiple log sources (CLI + Desktop) may log the same API call.
+    let messageId: String?
     let timestamp: Date
     let tokens: Int?
     /// Cost-weighted tokens approximating what Claude's rate limiter counts.
@@ -20,8 +23,14 @@ struct UsageEvent: Codable, Identifiable, Sendable {
     let model: String?
     let sessionId: String?
 
+    /// Key for deduplication: messageId if available, otherwise UUID.
+    var deduplicationKey: String {
+        messageId ?? id.uuidString
+    }
+
     init(
         id: UUID = UUID(),
+        messageId: String? = nil,
         timestamp: Date,
         tokens: Int? = nil,
         weightedTokens: Int? = nil,
@@ -30,6 +39,7 @@ struct UsageEvent: Codable, Identifiable, Sendable {
         sessionId: String? = nil
     ) {
         self.id = id
+        self.messageId = messageId
         self.timestamp = timestamp
         self.tokens = tokens
         self.weightedTokens = weightedTokens

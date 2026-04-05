@@ -113,9 +113,14 @@ struct MenuBarView: View {
             // Section 2: Weekly Limits
             weeklyLimitsSection
 
+            // Section 3: Extra Usage (if available)
+            if viewModel.extraUsageEnabled != nil {
+                extraUsageSection
+            }
+
             Divider()
 
-            // Section 3: Local (session usage, today, this week, daily breakdown)
+            // Section 4: Local (session usage, today, this week, daily breakdown)
             localSection
 
             Divider()
@@ -279,6 +284,61 @@ struct MenuBarView: View {
                 Text("Waiting for browser scrape data...")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
+            }
+        }
+    }
+
+    // MARK: - Extra Usage Section
+
+    private var extraUsageSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Header
+            HStack {
+                SectionHeader(title: "Extra Usage", icon: "dollarsign.circle")
+                Spacer()
+                if let enabled = viewModel.extraUsageEnabled {
+                    Text(enabled ? "On" : "Off")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(enabled ? .green : .secondary)
+                }
+            }
+
+            if viewModel.extraUsageEnabled == true {
+                // Spent and limit
+                if let spent = viewModel.extraUsageSpent {
+                    HStack {
+                        Text(String(format: "$%.2f Spent", spent))
+                            .font(.caption)
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        if let resets = viewModel.extraUsageResets {
+                            Text("Resets \(resets)")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+
+                    // Progress bar
+                    if let limit = viewModel.extraUsageLimit, limit > 0 {
+                        let pct = min(spent / limit * 100, 100)
+                        ProgressBarView(
+                            progress: pct / 100.0,
+                            color: usageColor(pct)
+                        )
+                        .frame(height: 4)
+
+                        HStack {
+                            Text("\(Int(pct))% used")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            Text(String(format: "$%.0f limit", limit))
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                }
             }
         }
     }

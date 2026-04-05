@@ -42,6 +42,12 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
     /// Scraped Sonnet reset info
     var scrapedSonnetReset: WeeklyResetInfo?
 
+    /// Extra usage data from scraping
+    var extraUsageEnabled: Bool?
+    var extraUsageSpent: Double?
+    var extraUsageLimit: Double?
+    var extraUsageResets: String?
+
     /// Browser scrape interval in seconds. Persisted in UserDefaults.
     var scrapeIntervalSeconds: Int {
         didSet {
@@ -294,6 +300,13 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         scrapedSonnetPercent = data.sonnetPercent
         scrapedAllModelsReset = data.allModelsReset
         scrapedSonnetReset = data.sonnetReset
+        // Extra usage
+        if let enabled = data.extraUsageEnabled {
+            extraUsageEnabled = enabled
+        }
+        if let spent = data.extraUsageSpent { extraUsageSpent = spent }
+        if let limit = data.extraUsageLimit { extraUsageLimit = limit }
+        if let resets = data.extraUsageResets { extraUsageResets = resets }
         // Update weekly calibration even without active session
         if data.sessionResetsIn == nil {
             calibrationManager.calibrateWeeklyOnly(

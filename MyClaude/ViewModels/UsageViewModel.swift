@@ -284,6 +284,12 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
                 sessionPercentage: data.sessionPercent,
                 weeklyPercentage: data.weeklyPercent
             )
+        } else {
+            // No active session on server — clear any stale calibrated session
+            // so we don't show a phantom countdown timer.
+            sessionEngine.clearCalibratedSession()
+            calibrationManager.clearSessionCalibration()
+            calibrationPeriodChanged = false
         }
         // Always update weekly data
         scrapedSonnetPercent = data.sonnetPercent

@@ -126,6 +126,24 @@ final class CalibrationManager {
         storage.remove(forKey: Self.storageKey)
     }
 
+    /// Clear session calibration while preserving weekly data.
+    /// Called when browser scraping reports no active session on the server.
+    func clearSessionCalibration() {
+        guard let existing = currentCalibration else { return }
+        let data = CalibrationData(
+            calibratedAt: existing.calibratedAt,
+            sessionStartTime: existing.sessionStartTime,
+            sessionPercentage: 0,
+            weeklyPercentage: existing.weeklyPercentage,
+            todayTokensAtCalibration: existing.todayTokensAtCalibration,
+            weeklyTokensAtCalibration: existing.weeklyTokensAtCalibration,
+            sessionTokensAtCalibration: 0,
+            sessionWeightedTokensAtCalibration: 0,
+            weeklyWeightedTokensAtCalibration: existing.weeklyWeightedTokensAtCalibration
+        )
+        storage.save(data, forKey: Self.storageKey)
+    }
+
     /// Estimate current session % using session-specific burn rate only.
     /// Returns calibrated % as floor. Only increases if session burn rate is available
     /// and new weighted tokens have been added since calibration.

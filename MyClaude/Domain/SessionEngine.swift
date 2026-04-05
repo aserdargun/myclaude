@@ -44,6 +44,13 @@ final class SessionEngine {
         delegate?.sessionEngine(self, didUpdateSession: currentSession)
     }
 
+    /// Clear calibrated session — server reports no active session.
+    func clearCalibratedSession() {
+        calibratedSessionStart = nil
+        updateCurrentSession()
+        delegate?.sessionEngine(self, didUpdateSession: currentSession)
+    }
+
     func processEvents(_ events: [UsageEvent]) {
         var addedNew = false
         for event in events {

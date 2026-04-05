@@ -215,16 +215,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             // Skip if height hasn't meaningfully changed (avoid jitter)
             if abs(panel.frame.height - newHeight) < 1 { return }
 
-            // Anchor at top edge (menu bar) — panel grows/shrinks downward
+            // Anchor at top edge (menu bar) — panel grows/shrinks downward.
+            // No animation — instant resize prevents the CLAUDE section from
+            // visually shifting while the panel frame catches up.
             let topEdge = panel.frame.maxY
             let newY = topEdge - newHeight
             let newFrame = NSRect(x: panel.frame.origin.x, y: newY, width: panelWidth, height: newHeight)
-
-            NSAnimationContext.runAnimationGroup { context in
-                context.duration = 0.15
-                context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-                panel.animator().setFrame(newFrame, display: true)
-            }
+            panel.setFrame(newFrame, display: true)
         }
     }
 

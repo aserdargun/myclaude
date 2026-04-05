@@ -217,6 +217,28 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         aggregator.usage(from: start, to: end)
     }
 
+    // MARK: - Week Navigation
+
+    /// Get weekly stats for a given offset (0 = current, -1 = last week, etc.)
+    func weeklyStats(for offset: Int) -> WeeklyStats {
+        aggregator.weeklyStats(weekOffset: offset)
+    }
+
+    /// Whether there's data available for the given week offset.
+    func hasDataForWeek(offset: Int) -> Bool {
+        guard let earliest = aggregator.earliestEventDate else { return false }
+        var cal = Calendar.current
+        cal.firstWeekday = 1
+        let today = cal.startOfDay(for: Date())
+        let weekday = cal.component(.weekday, from: today)
+        let daysSinceSunday = weekday - 1
+        guard let thisSunday = cal.date(byAdding: .day, value: -daysSinceSunday, to: today),
+              let targetSunday = cal.date(byAdding: .weekOfYear, value: offset, to: thisSunday) else {
+            return false
+        }
+        return earliest <= targetSunday.addingTimeInterval(7 * 24 * 3600)
+    }
+
     // MARK: - Calibration
 
     func performCalibration(

@@ -435,11 +435,7 @@ struct MenuBarView: View {
 
             if isLocalExpanded {
                 StatsView(
-                    weeklyStats: viewModel.weeklyStats,
-                    todayStats: viewModel.todayStats,
-                    todaySessionCount: viewModel.todaySessionCount,
-                    currentTokens: viewModel.currentTokens,
-                    currentEventCount: viewModel.currentEventCount,
+                    viewModel: viewModel,
                     hasCalibration: viewModel.calibrationData != nil
                 )
             }

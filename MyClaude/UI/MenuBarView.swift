@@ -418,7 +418,7 @@ struct MenuBarView: View {
     private var localSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Button {
-                withAnimation(.easeInEaseOut(duration: 0.2)) {
+                withAnimation(.easeInOut(duration: 0.2)) {
                     isLocalExpanded.toggle()
                 }
                 // Resize panel after SwiftUI layout settles

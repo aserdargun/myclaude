@@ -181,6 +181,10 @@ final class BrowserScraper {
             if (spentMatch || extraText.indexOf('on extra usage') !== -1) {
                 result.extra_enabled = true;
             }
+            // If section exists but no active indicators found, it's off
+            if (result.extra_enabled === undefined) {
+                result.extra_enabled = false;
+            }
         }
 
         return JSON.stringify(result);

@@ -99,17 +99,18 @@ struct SettingsView: View {
         .frame(width: 340)
     }
 
-    /// Day labels aligned to the weekly reset window.
-    /// If reset is "Sun 3:00 PM", the window runs:
-    /// Sun PM → Mon → Tue → Wed → Thu → Fri → Sat → Sun PM
+    /// Day labels for 8 segments: reset day appears twice (first and last).
+    /// E.g. if reset is Sunday: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
     private var windowDayLabels: [String] {
         let resetDay = resetDayIndex
-        var labels: [String] = []
         let dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+        var labels: [String] = []
         for i in 0..<7 {
             let idx = (resetDay + i) % 7
             labels.append(dayNames[idx])
         }
+        // 8th element: same day as first (second half of reset day)
+        labels.append(dayNames[resetDay])
         return labels
     }
 
@@ -159,10 +160,10 @@ struct SettingsView: View {
                 }
             }
 
-            // Day fields: 7 days from reset day to reset day
-            HStack(spacing: 3) {
+            // Day fields: 8 segments (reset day split into two halves)
+            HStack(spacing: 2) {
                 let labels = windowDayLabels
-                ForEach(0..<7, id: \.self) { i in
+                ForEach(0..<8, id: \.self) { i in
                     windowDayTargetField(index: i, label: labels[i])
                 }
             }
@@ -170,22 +171,21 @@ struct SettingsView: View {
     }
 
     private func windowDayTargetField(index: Int, label: String) -> some View {
-        // Map window-order index back to storage index (Sun=0-based)
-        let storageIndex = (resetDayIndex + index) % 7
+        // Storage is already in window order (8 elements)
         return VStack(spacing: 2) {
             Text(label)
                 .font(.system(size: 9))
                 .foregroundStyle(.secondary)
             TextField("", value: Binding(
-                get: { viewModel.dailyTargets[storageIndex] },
+                get: { viewModel.dailyTargets[index] },
                 set: { newVal in
                     var targets = viewModel.dailyTargets
-                    targets[storageIndex] = max(0, min(100, newVal))
+                    targets[index] = max(0, min(100, newVal))
                     viewModel.dailyTargets = targets
                 }
             ), format: .number)
                 .textFieldStyle(.roundedBorder)
-                .frame(width: 36)
+                .frame(width: 34)
                 .font(.caption)
                 .multilineTextAlignment(.center)
         }

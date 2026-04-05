@@ -170,16 +170,47 @@ final class BrowserScraper {
             var extraResetMatch = extraText.match(/Resets\s+(\w+\s+\d{1,2})/i);
             if (extraResetMatch) result.extra_resets = extraResetMatch[1];
 
-            // Toggle state: check for enabled/on indicators
-            // Look for "% used" which indicates extra usage is active
-            var extraPctMatch = extraText.match(/(\d+)%\s*used/);
-            if (extraPctMatch) {
-                result.extra_pct = parseInt(extraPctMatch[1]);
-                result.extra_enabled = true;
+            // Toggle state: detect from DOM switch/toggle element
+            // Look for button[role="switch"] or input[type="checkbox"] near "Extra usage"
+            var toggleOn = null;
+            var extraHeadings = document.querySelectorAll('h2, h3, h4, div, span, p');
+            for (var hi = 0; hi < extraHeadings.length; hi++) {
+                var el = extraHeadings[hi];
+                if (el.textContent && el.textContent.trim().indexOf('Extra usage') === 0) {
+                    // Search within this element's parent container for a toggle
+                    var container = el.closest('section') || el.parentElement && el.parentElement.parentElement || el.parentElement;
+                    if (container) {
+                        // Check role="switch" buttons (common in React toggle components)
+                        var switchBtn = container.querySelector('button[role="switch"]');
+                        if (switchBtn) {
+                            toggleOn = switchBtn.getAttribute('aria-checked') === 'true'
+                                    || switchBtn.getAttribute('data-state') === 'checked';
+                            break;
+                        }
+                        // Check checkbox inputs
+                        var checkbox = container.querySelector('input[type="checkbox"]');
+                        if (checkbox) {
+                            toggleOn = checkbox.checked;
+                            break;
+                        }
+                    }
+                    break;
+                }
             }
-            // Also check for explicit toggle text or the presence of "$X spent"
-            if (spentMatch || extraText.indexOf('on extra usage') !== -1) {
-                result.extra_enabled = true;
+
+            if (toggleOn !== null) {
+                result.extra_enabled = toggleOn;
+            } else {
+                // Fallback to text heuristics
+                var extraPctMatch = extraText.match(/(\d+)%\s*used/);
+                if (extraPctMatch) {
+                    result.extra_pct = parseInt(extraPctMatch[1]);
+                    result.extra_enabled = true;
+                } else if (spentMatch || extraText.indexOf('on extra usage') !== -1) {
+                    result.extra_enabled = true;
+                } else {
+                    result.extra_enabled = false;
+                }
             }
             // If section exists but no active indicators found, it's off
             if (result.extra_enabled === undefined) {

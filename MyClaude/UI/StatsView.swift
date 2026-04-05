@@ -109,7 +109,7 @@ struct StatsView: View {
             } label: {
                 Text(weekOffset == 0 ? "Current" : "Today")
                     .font(.caption2)
-                    .foregroundStyle(weekOffset == 0 ? .tertiary : .blue)
+                    .foregroundColor(weekOffset == 0 ? .gray : .blue)
             }
             .buttonStyle(.borderless)
             .disabled(weekOffset == 0)

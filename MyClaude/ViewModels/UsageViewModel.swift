@@ -289,7 +289,6 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
             // so we don't show a phantom countdown timer.
             sessionEngine.clearCalibratedSession()
             calibrationManager.clearSessionCalibration()
-            calibrationPeriodChanged = false
         }
         // Always update weekly data
         scrapedSonnetPercent = data.sonnetPercent

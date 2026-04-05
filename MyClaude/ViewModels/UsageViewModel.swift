@@ -333,10 +333,8 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         scrapedSonnetPercent = data.sonnetPercent
         scrapedAllModelsReset = data.allModelsReset
         scrapedSonnetReset = data.sonnetReset
-        // Extra usage
-        if let enabled = data.extraUsageEnabled {
-            extraUsageEnabled = enabled
-        }
+        // Extra usage — always apply enabled state so toggling off is reflected
+        extraUsageEnabled = data.extraUsageEnabled
         if let spent = data.extraUsageSpent { extraUsageSpent = spent }
         if let limit = data.extraUsageLimit { extraUsageLimit = limit }
         if let resets = data.extraUsageResets { extraUsageResets = resets }

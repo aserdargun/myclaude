@@ -18,6 +18,8 @@ struct StatsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // Session Usage — only show when there's local data.
+            // When calibrated with 0 local events, session usage is already
+            // shown via browser scraping in the CLAUDE section above.
             if currentTokens > 0 || currentEventCount > 0 || !hasCalibration {
                 localHeader("Session Usage", icon: "chart.pie")
 

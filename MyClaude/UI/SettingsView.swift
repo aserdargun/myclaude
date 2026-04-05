@@ -58,7 +58,7 @@ struct SettingsView: View {
 
             Divider()
 
-            // Daily Targets
+            // Daily Targets aligned to weekly reset window
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
                     SectionHeader(title: "Weekly Daily Targets", icon: "chart.bar")
@@ -67,6 +67,18 @@ struct SettingsView: View {
                     Text("Total: \(total)%")
                         .font(.caption2)
                         .foregroundStyle(total == 100 ? .green : .red)
+                }
+
+                // Show reset window info
+                if let resetInfo = viewModel.scrapedAllModelsReset {
+                    HStack(spacing: 2) {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                        Text("Window: \(resetDisplayText(resetInfo))")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
                 }
 
                 dailyTargetsGrid
@@ -87,26 +99,88 @@ struct SettingsView: View {
         .frame(width: 340)
     }
 
-    private static let dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+    /// Day labels aligned to the weekly reset window.
+    /// If reset is "Sun 3:00 PM", the window runs:
+    /// Sun PM → Mon → Tue → Wed → Thu → Fri → Sat → Sun PM
+    private var windowDayLabels: [String] {
+        let resetDay = resetDayIndex
+        var labels: [String] = []
+        let dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+        for i in 0..<7 {
+            let idx = (resetDay + i) % 7
+            labels.append(dayNames[idx])
+        }
+        return labels
+    }
+
+    /// The calendar day index (0=Sun) where the weekly window starts.
+    private var resetDayIndex: Int {
+        if let reset = viewModel.scrapedAllModelsReset {
+            switch reset {
+            case .resetsAt(let day, _):
+                return dayNameToIndex(day)
+            case .resetsIn(let interval):
+                let resetDate = Date().addingTimeInterval(interval)
+                let weekday = Calendar.current.component(.weekday, from: resetDate)
+                return weekday - 1 // 1=Sun → 0
+            }
+        }
+        return 0 // Default: Sunday
+    }
+
+    /// The reset time string (e.g. "3:00 PM")
+    private var resetTimeString: String {
+        if let reset = viewModel.scrapedAllModelsReset {
+            switch reset {
+            case .resetsAt(_, let time):
+                return time
+            case .resetsIn(let interval):
+                let resetDate = Date().addingTimeInterval(interval)
+                let formatter = DateFormatter()
+                formatter.dateFormat = "h:mm a"
+                return formatter.string(from: resetDate)
+            }
+        }
+        return ""
+    }
 
     private var dailyTargetsGrid: some View {
-        HStack(spacing: 4) {
-            ForEach(0..<7, id: \.self) { i in
-                dayTargetField(index: i)
+        VStack(spacing: 4) {
+            // Reset time label at the top
+            if !resetTimeString.isEmpty {
+                HStack {
+                    Text(resetTimeString)
+                        .font(.system(size: 8))
+                        .foregroundStyle(.tertiary)
+                    Spacer()
+                    Text(resetTimeString)
+                        .font(.system(size: 8))
+                        .foregroundStyle(.tertiary)
+                }
+            }
+
+            // Day fields: 7 days from reset day to reset day
+            HStack(spacing: 3) {
+                let labels = windowDayLabels
+                ForEach(0..<7, id: \.self) { i in
+                    windowDayTargetField(index: i, label: labels[i])
+                }
             }
         }
     }
 
-    private func dayTargetField(index: Int) -> some View {
-        VStack(spacing: 2) {
-            Text(Self.dayNames[index])
+    private func windowDayTargetField(index: Int, label: String) -> some View {
+        // Map window-order index back to storage index (Sun=0-based)
+        let storageIndex = (resetDayIndex + index) % 7
+        return VStack(spacing: 2) {
+            Text(label)
                 .font(.system(size: 9))
                 .foregroundStyle(.secondary)
             TextField("", value: Binding(
-                get: { viewModel.dailyTargets[index] },
+                get: { viewModel.dailyTargets[storageIndex] },
                 set: { newVal in
                     var targets = viewModel.dailyTargets
-                    targets[index] = max(0, min(100, newVal))
+                    targets[storageIndex] = max(0, min(100, newVal))
                     viewModel.dailyTargets = targets
                 }
             ), format: .number)
@@ -114,6 +188,20 @@ struct SettingsView: View {
                 .frame(width: 36)
                 .font(.caption)
                 .multilineTextAlignment(.center)
+        }
+    }
+
+    private func dayNameToIndex(_ name: String) -> Int {
+        let map = ["sun": 0, "mon": 1, "tue": 2, "wed": 3, "thu": 4, "fri": 5, "sat": 6]
+        return map[name.lowercased().prefix(3).description] ?? 0
+    }
+
+    private func resetDisplayText(_ reset: WeeklyResetInfo) -> String {
+        switch reset {
+        case .resetsIn(let interval):
+            return "Resets in \(interval.compactRemaining)"
+        case .resetsAt(let day, let time):
+            return "\(day) \(time) → \(day) \(time)"
         }
     }
 }

@@ -64,15 +64,18 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         }
     }
 
-    /// Daily target percentages for weekly limits (Sun–Sat). Must sum to 100.
+    /// Daily target percentages for weekly limits.
+    /// 8 elements in window order: [resetDay1, day2, ..., day7, resetDay2]
+    /// where the reset day is split into two halves around the reset time.
+    /// Must sum to 100.
     var dailyTargets: [Int] {
         didSet {
-            UserDefaults.standard.set(dailyTargets, forKey: "dailyTargets")
+            UserDefaults.standard.set(dailyTargets, forKey: "dailyTargets8")
         }
     }
 
-    /// Default daily targets: Sun=15, Mon=10, Tue=15, Wed=15, Thu=10, Fri=15, Sat=20
-    static let defaultDailyTargets = [15, 10, 15, 15, 10, 15, 20]
+    /// Default daily targets (8 segments): first half of reset day + 6 full days + second half
+    static let defaultDailyTargets = [7, 10, 15, 15, 10, 15, 20, 8]
 
     // MARK: - Calibration state
 
@@ -163,8 +166,16 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
         let saved = UserDefaults.standard.integer(forKey: "scrapeIntervalSeconds")
         self.scrapeIntervalSeconds = saved > 0 ? saved : 300
         self.scrapeSourceURL = UserDefaults.standard.string(forKey: "scrapeSourceURL") ?? Constants.claudeUsageURL
-        if let saved = UserDefaults.standard.array(forKey: "dailyTargets") as? [Int], saved.count == 7 {
+        if let saved = UserDefaults.standard.array(forKey: "dailyTargets8") as? [Int], saved.count == 8 {
             self.dailyTargets = saved
+        } else if let old = UserDefaults.standard.array(forKey: "dailyTargets") as? [Int], old.count == 7 {
+            // Migrate from 7-element format: split first element into two halves
+            var migrated = old
+            let firstHalf = old[0] / 2
+            let secondHalf = old[0] - firstHalf
+            migrated[0] = firstHalf
+            migrated.append(secondHalf)
+            self.dailyTargets = migrated
         } else {
             self.dailyTargets = UsageViewModel.defaultDailyTargets
         }

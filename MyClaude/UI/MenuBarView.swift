@@ -254,7 +254,7 @@ struct MenuBarView: View {
                             progress: min(weeklyPct / 100.0, 1.0),
                             color: usageColor(weeklyPct),
                             dailyTargets: viewModel.dailyTargets,
-                            currentDayIndex: currentSundayBasedDayIndex
+                            currentDayIndex: currentWindowSegmentIndex
                         )
                         .frame(height: 8)
 
@@ -356,19 +356,86 @@ struct MenuBarView: View {
 
     private static let shortDayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 
+    /// Day labels for 8-segment targets in window order.
+    /// The reset day appears as first and last element.
+    private var windowDayLabels: [String] {
+        let resetDay = resetDayCalendarIndex
+        var labels: [String] = []
+        for i in 0..<7 {
+            let idx = (resetDay + i) % 7
+            labels.append(Self.shortDayNames[idx])
+        }
+        labels.append(Self.shortDayNames[resetDay])
+        return labels
+    }
+
+    /// Calendar day index (0=Sun) of the weekly reset day
+    private var resetDayCalendarIndex: Int {
+        if let reset = viewModel.scrapedAllModelsReset {
+            switch reset {
+            case .resetsAt(let day, _):
+                let map = ["sun": 0, "mon": 1, "tue": 2, "wed": 3, "thu": 4, "fri": 5, "sat": 6]
+                return map[day.lowercased().prefix(3).description] ?? 0
+            case .resetsIn(let interval):
+                let resetDate = Date().addingTimeInterval(interval)
+                let weekday = Calendar.current.component(.weekday, from: resetDate)
+                return weekday - 1
+            }
+        }
+        return 0
+    }
+
+    /// Which of the 8 target segments is "today"?
+    /// Segments: [resetDay1, day2, day3, ..., day7, resetDay2]
+    private var currentWindowSegmentIndex: Int {
+        let weekday = Calendar.current.component(.weekday, from: viewModel.todayStats.date)
+        let todayCalIndex = weekday - 1  // 0=Sun
+        let resetDay = resetDayCalendarIndex
+        let offset = (todayCalIndex - resetDay + 7) % 7
+        // offset 0 = reset day. Could be segment 0 (first half) or 7 (second half).
+        // Use current time vs reset time to decide.
+        if offset == 0 {
+            return isBeforeResetTime ? 7 : 0
+        }
+        return offset
+    }
+
+    /// Whether current time is before the reset time on the reset day
+    private var isBeforeResetTime: Bool {
+        if let reset = viewModel.scrapedAllModelsReset {
+            switch reset {
+            case .resetsAt(_, let time):
+                let formatter = DateFormatter()
+                formatter.dateFormat = "h:mm a"
+                if let resetDate = formatter.date(from: time) {
+                    let cal = Calendar.current
+                    let resetHour = cal.component(.hour, from: resetDate)
+                    let resetMin = cal.component(.minute, from: resetDate)
+                    let nowHour = cal.component(.hour, from: Date())
+                    let nowMin = cal.component(.minute, from: Date())
+                    return (nowHour * 60 + nowMin) < (resetHour * 60 + resetMin)
+                }
+            case .resetsIn:
+                return false
+            }
+        }
+        return false
+    }
+
     /// Day name and target % labels centered within each segment between vertical markers
     private var targetLabelsRow: some View {
         GeometryReader { geometry in
             let targets = viewModel.dailyTargets
-            let dayIndex = currentSundayBasedDayIndex
+            let labels = windowDayLabels
+            let segIndex = currentWindowSegmentIndex
             ForEach(0..<targets.count, id: \.self) { i in
                 let segStart = i == 0 ? 0 : targets.prefix(i).reduce(0, +)
                 let segEnd = targets.prefix(i + 1).reduce(0, +)
                 let xStart = geometry.size.width * Double(segStart) / 100.0
                 let xEnd = geometry.size.width * Double(segEnd) / 100.0
-                let isCurrentDay = (i == dayIndex)
+                let isCurrentDay = (i == segIndex)
                 VStack(spacing: 0) {
-                    Text(Self.shortDayNames[i])
+                    Text(i < labels.count ? labels[i] : "")
                         .font(.system(size: 7))
                         .foregroundStyle(isCurrentDay ? .red : .secondary)
                     Text("\(targets.prefix(i + 1).reduce(0, +))%")
@@ -379,14 +446,6 @@ struct MenuBarView: View {
             }
         }
         .frame(height: 20)
-    }
-
-    /// Current day index where Sunday=0, Saturday=6.
-    /// Derived from viewModel.todayStats.date so SwiftUI re-evaluates
-    /// when the day changes (todayStats is updated by the UI timer).
-    private var currentSundayBasedDayIndex: Int {
-        let weekday = Calendar.current.component(.weekday, from: viewModel.todayStats.date)
-        return weekday - 1  // Calendar weekday: 1=Sun, 2=Mon, ..., 7=Sat → 0-6
     }
 
     private func resetDisplayText(_ reset: WeeklyResetInfo) -> String {

@@ -212,12 +212,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             let fittingSize = hostingView.fittingSize
             let newHeight = min(max(fittingSize.height, 300), 800)
 
+            // Skip if height hasn't meaningfully changed (avoid jitter)
+            if abs(panel.frame.height - newHeight) < 1 { return }
+
+            // Anchor at top edge (menu bar) — panel grows/shrinks downward
             let topEdge = panel.frame.maxY
             let newY = topEdge - newHeight
             let newFrame = NSRect(x: panel.frame.origin.x, y: newY, width: panelWidth, height: newHeight)
 
             NSAnimationContext.runAnimationGroup { context in
-                context.duration = 0.2
+                context.duration = 0.15
                 context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
                 panel.animator().setFrame(newFrame, display: true)
             }

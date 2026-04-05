@@ -130,6 +130,17 @@ struct MenuBarView: View {
         }
         .padding(12)
         .frame(width: 340)
+        .onAppear {
+            // Initial resize
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                NotificationCenter.default.post(name: .panelContentDidChange, object: nil)
+            }
+        }
+        .onChange(of: viewModel.extraUsageEnabled) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                NotificationCenter.default.post(name: .panelContentDidChange, object: nil)
+            }
+        }
     }
 
     // MARK: - Session Section
@@ -407,9 +418,11 @@ struct MenuBarView: View {
     private var localSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Button {
-                isLocalExpanded.toggle()
+                withAnimation(.easeInEaseOut(duration: 0.2)) {
+                    isLocalExpanded.toggle()
+                }
                 // Resize panel after SwiftUI layout settles
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
                     NotificationCenter.default.post(name: .panelContentDidChange, object: nil)
                 }
             } label: {

@@ -23,6 +23,14 @@ struct ScrapedUsageData {
     let allModelsReset: WeeklyResetInfo?
     /// When the Sonnet only weekly limit resets
     let sonnetReset: WeeklyResetInfo?
+    /// Extra usage: whether the toggle is enabled
+    let extraUsageEnabled: Bool?
+    /// Extra usage: amount spent (e.g. 1.65)
+    let extraUsageSpent: Double?
+    /// Extra usage: spending limit (e.g. 50.0)
+    let extraUsageLimit: Double?
+    /// Extra usage: reset date string (e.g. "May 1")
+    let extraUsageResets: String?
 }
 
 enum BrowserScraperError: LocalizedError {
@@ -140,6 +148,38 @@ final class BrowserScraper {
                     result.sn_resets_day = snResetDate[1];
                     result.sn_resets_time = snResetDate[2];
                 }
+            }
+        }
+
+        // Extra usage section
+        var extraIdx = body.indexOf('Extra usage');
+        if (extraIdx !== -1) {
+            var extraText = body.substring(extraIdx);
+            result.extra_usage_found = true;
+
+            // Spent amount: "$X.XX spent"
+            var spentMatch = extraText.match(/\$(\d+(?:\.\d{1,2})?)\s*spent/i);
+            if (spentMatch) result.extra_spent = parseFloat(spentMatch[1]);
+
+            // Limit: "$XX" after "Monthly spend limit" or as standalone
+            var limitMatch = extraText.match(/\$(\d+(?:\.\d{1,2})?)\s*(?:\n|$)/);
+            if (!limitMatch) limitMatch = extraText.match(/Monthly spend limit[^$]*\$(\d+(?:\.\d{1,2})?)/i);
+            if (limitMatch) result.extra_limit = parseFloat(limitMatch[1]);
+
+            // Resets date: "Resets May 1" etc
+            var extraResetMatch = extraText.match(/Resets\s+(\w+\s+\d{1,2})/i);
+            if (extraResetMatch) result.extra_resets = extraResetMatch[1];
+
+            // Toggle state: check for enabled/on indicators
+            // Look for "% used" which indicates extra usage is active
+            var extraPctMatch = extraText.match(/(\d+)%\s*used/);
+            if (extraPctMatch) {
+                result.extra_pct = parseInt(extraPctMatch[1]);
+                result.extra_enabled = true;
+            }
+            // Also check for explicit toggle text or the presence of "$X spent"
+            if (spentMatch || extraText.indexOf('on extra usage') !== -1) {
+                result.extra_enabled = true;
             }
         }
 
@@ -371,13 +411,23 @@ final class BrowserScraper {
         // Sonnet reset
         let sonnetReset = parseWeeklyReset(json: json, prefix: "sn")
 
+        // Extra usage
+        let extraEnabled = json["extra_enabled"] as? Bool
+        let extraSpent = json["extra_spent"] as? Double
+        let extraLimit = json["extra_limit"] as? Double
+        let extraResets = json["extra_resets"] as? String
+
         return ScrapedUsageData(
             sessionPercent: Double(sessionPct),
             weeklyPercent: Double(weeklyPct ?? 0),
             sonnetPercent: sonnetPct.map { Double($0) },
             sessionResetsIn: resetsIn,
             allModelsReset: allModelsReset,
-            sonnetReset: sonnetReset
+            sonnetReset: sonnetReset,
+            extraUsageEnabled: extraEnabled,
+            extraUsageSpent: extraSpent,
+            extraUsageLimit: extraLimit,
+            extraUsageResets: extraResets
         )
     }
 

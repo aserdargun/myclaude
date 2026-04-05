@@ -1,12 +1,19 @@
 import SwiftUI
 
 struct StatsView: View {
-    let weeklyStats: WeeklyStats
-    let todayStats: DailyStats
-    let todaySessionCount: Int
-    let currentTokens: Int
-    let currentEventCount: Int
+    let viewModel: UsageViewModel
     let hasCalibration: Bool
+
+    @State private var weekOffset: Int = 0
+
+    private var currentTokens: Int { viewModel.currentTokens }
+    private var currentEventCount: Int { viewModel.currentEventCount }
+    private var todayStats: DailyStats { viewModel.todayStats }
+    private var todaySessionCount: Int { viewModel.todaySessionCount }
+
+    private var displayedWeekStats: WeeklyStats {
+        weekOffset == 0 ? viewModel.weeklyStats : viewModel.weeklyStats(for: weekOffset)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -26,25 +33,37 @@ struct StatsView: View {
                 )
             }
 
-            // Today
-            localHeader("Today", icon: "calendar")
+            // Today (only for current week view)
+            if weekOffset == 0 {
+                localHeader("Today", icon: "calendar")
 
-            StatRow(label: "Tokens", value: formatTokens(todayStats.totalTokens))
-            StatRow(label: "Events", value: "\(todayStats.eventCount)")
-            StatRow(label: "Sessions", value: "\(todaySessionCount)")
+                StatRow(label: "Tokens", value: formatTokens(todayStats.totalTokens))
+                StatRow(label: "Events", value: "\(todayStats.eventCount)")
+                StatRow(label: "Sessions", value: "\(todaySessionCount)")
+            }
 
-            // Weekly
-            localHeader("This Week", icon: "chart.bar")
+            // Weekly header with navigation
+            HStack {
+                localHeader(weekOffset == 0 ? "This Week" : "Week", icon: "chart.bar")
+                Spacer()
+                weekNavigationButtons
+            }
 
-            StatRow(label: "Total Tokens", value: formatTokens(weeklyStats.totalTokens))
-            StatRow(label: "Total Events", value: "\(weeklyStats.totalEvents)")
-            StatRow(label: "Sessions", value: "\(weeklyStats.totalSessions)")
+            StatRow(label: "Total Tokens", value: formatTokens(displayedWeekStats.totalTokens))
+            StatRow(label: "Total Events", value: "\(displayedWeekStats.totalEvents)")
+            StatRow(label: "Sessions", value: "\(displayedWeekStats.totalSessions)")
 
-            // Daily breakdown
-            if !weeklyStats.dailyBreakdown.isEmpty {
-                localHeader("Daily Breakdown", icon: "list.bullet")
+            // Daily breakdown with navigation
+            if !displayedWeekStats.dailyBreakdown.isEmpty {
+                HStack {
+                    localHeader("Daily Breakdown", icon: "list.bullet")
+                    Spacer()
+                    if weekOffset != 0 {
+                        weekRangeLabel
+                    }
+                }
 
-                ForEach(weeklyStats.dailyBreakdown) { day in
+                ForEach(displayedWeekStats.dailyBreakdown) { day in
                     HStack(spacing: 4) {
                         Text(day.date.dayOfWeekString)
                             .font(.caption2)
@@ -71,6 +90,58 @@ struct StatsView: View {
         }
     }
 
+    // MARK: - Week Navigation
+
+    private var weekNavigationButtons: some View {
+        HStack(spacing: 4) {
+            Button {
+                weekOffset -= 1
+                NotificationCenter.default.post(name: .panelContentDidChange, object: nil)
+            } label: {
+                Image(systemName: "chevron.left")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.borderless)
+            .disabled(!viewModel.hasDataForWeek(offset: weekOffset - 1))
+
+            Button {
+                weekOffset = 0
+                NotificationCenter.default.post(name: .panelContentDidChange, object: nil)
+            } label: {
+                Text(weekOffset == 0 ? "Current" : "Today")
+                    .font(.caption2)
+                    .foregroundColor(weekOffset == 0 ? .gray : .blue)
+            }
+            .buttonStyle(.borderless)
+            .disabled(weekOffset == 0)
+
+            Button {
+                weekOffset += 1
+                NotificationCenter.default.post(name: .panelContentDidChange, object: nil)
+            } label: {
+                Image(systemName: "chevron.right")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.borderless)
+            .disabled(weekOffset >= 0)
+        }
+    }
+
+    private var weekRangeLabel: some View {
+        Group {
+            if let first = displayedWeekStats.dailyBreakdown.first,
+               let last = displayedWeekStats.dailyBreakdown.last {
+                Text("\(first.date.shortDateString) – \(last.date.shortDateString)")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+        }
+    }
+
+    // MARK: - Helpers
+
     private func localHeader(_ title: String, icon: String) -> some View {
         HStack(spacing: 4) {
             Image(systemName: icon)
@@ -92,7 +163,7 @@ struct StatsView: View {
     }
 
     private func maxDailyProgress(_ tokens: Int) -> Double {
-        let maxTokens = weeklyStats.dailyBreakdown.map(\.totalTokens).max() ?? 1
+        let maxTokens = displayedWeekStats.dailyBreakdown.map(\.totalTokens).max() ?? 1
         guard maxTokens > 0 else { return 0 }
         return Double(tokens) / Double(maxTokens)
     }

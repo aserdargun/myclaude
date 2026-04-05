@@ -38,8 +38,13 @@ final class UsageAggregator {
     // MARK: - Weekly stats (Monday to Sunday)
 
     func weeklyStats() -> WeeklyStats {
+        weeklyStats(weekOffset: 0)
+    }
+
+    /// Get stats for a specific week. weekOffset: 0 = current, -1 = last week, etc.
+    func weeklyStats(weekOffset: Int) -> WeeklyStats {
         let calendar = sundayStartCalendar
-        let weekRange = currentWeekRange(calendar: calendar)
+        let weekRange = weekRange(offset: weekOffset, calendar: calendar)
 
         let weekEvents = allEvents.filter {
             $0.timestamp >= weekRange.start && $0.timestamp < weekRange.end
@@ -105,17 +110,22 @@ final class UsageAggregator {
         return cal
     }
 
-    /// Returns the date range for the current week (Sunday 00:00 to next Sunday 00:00).
-    private func currentWeekRange(calendar: Calendar) -> (start: Date, end: Date) {
+    /// Returns the date range for a week. offset: 0 = current, -1 = last week, etc.
+    private func weekRange(offset: Int = 0, calendar: Calendar) -> (start: Date, end: Date) {
         let today = calendar.startOfDay(for: Date())
         let weekday = calendar.component(.weekday, from: today) // 1=Sun, 2=Mon, ..., 7=Sat
-        // Days since Sunday: Sun=0, Mon=1, ..., Sat=6
         let daysSinceSunday = weekday - 1
-        guard let sunday = calendar.date(byAdding: .day, value: -daysSinceSunday, to: today),
+        guard let thisSunday = calendar.date(byAdding: .day, value: -daysSinceSunday, to: today),
+              let sunday = calendar.date(byAdding: .weekOfYear, value: offset, to: thisSunday),
               let nextSunday = calendar.date(byAdding: .day, value: 7, to: sunday) else {
             return (today, today)
         }
         return (sunday, nextSunday)
+    }
+
+    /// Earliest event date, used to limit how far back navigation can go.
+    var earliestEventDate: Date? {
+        allEvents.first?.timestamp
     }
 
     private func countSessions(in events: [UsageEvent]) -> Int {

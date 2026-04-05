@@ -113,9 +113,14 @@ struct MenuBarView: View {
             // Section 2: Weekly Limits
             weeklyLimitsSection
 
+            // Section 3: Extra Usage (if available)
+            if viewModel.extraUsageEnabled != nil {
+                extraUsageSection
+            }
+
             Divider()
 
-            // Section 3: Local (session usage, today, this week, daily breakdown)
+            // Section 4: Local (session usage, today, this week, daily breakdown)
             localSection
 
             Divider()
@@ -125,6 +130,17 @@ struct MenuBarView: View {
         }
         .padding(12)
         .frame(width: 340)
+        .onAppear {
+            // Initial resize
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                NotificationCenter.default.post(name: .panelContentDidChange, object: nil)
+            }
+        }
+        .onChange(of: viewModel.extraUsageEnabled) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                NotificationCenter.default.post(name: .panelContentDidChange, object: nil)
+            }
+        }
     }
 
     // MARK: - Session Section
@@ -283,6 +299,61 @@ struct MenuBarView: View {
         }
     }
 
+    // MARK: - Extra Usage Section
+
+    private var extraUsageSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Header
+            HStack {
+                SectionHeader(title: "Extra Usage", icon: "dollarsign.circle")
+                Spacer()
+                if let enabled = viewModel.extraUsageEnabled {
+                    Text(enabled ? "On" : "Off")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(enabled ? .green : .secondary)
+                }
+            }
+
+            if viewModel.extraUsageEnabled == true {
+                // Spent and limit
+                if let spent = viewModel.extraUsageSpent {
+                    HStack {
+                        Text(String(format: "$%.2f Spent", spent))
+                            .font(.caption)
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        if let resets = viewModel.extraUsageResets {
+                            Text("Resets \(resets)")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+
+                    // Progress bar
+                    if let limit = viewModel.extraUsageLimit, limit > 0 {
+                        let pct = min(spent / limit * 100, 100)
+                        ProgressBarView(
+                            progress: pct / 100.0,
+                            color: usageColor(pct)
+                        )
+                        .frame(height: 4)
+
+                        HStack {
+                            Text("\(Int(pct))% used")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            Text(String(format: "$%.0f limit", limit))
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private static let shortDayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 
     /// Day name and target % labels centered within each segment between vertical markers
@@ -348,10 +419,8 @@ struct MenuBarView: View {
         VStack(alignment: .leading, spacing: 8) {
             Button {
                 isLocalExpanded.toggle()
-                // Resize panel after SwiftUI layout settles
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
-                    NotificationCenter.default.post(name: .panelContentDidChange, object: nil)
-                }
+                // Resize panel immediately — no delay to avoid top-section jitter
+                NotificationCenter.default.post(name: .panelContentDidChange, object: nil)
             } label: {
                 HStack {
                     Spacer()
@@ -366,11 +435,7 @@ struct MenuBarView: View {
 
             if isLocalExpanded {
                 StatsView(
-                    weeklyStats: viewModel.weeklyStats,
-                    todayStats: viewModel.todayStats,
-                    todaySessionCount: viewModel.todaySessionCount,
-                    currentTokens: viewModel.currentTokens,
-                    currentEventCount: viewModel.currentEventCount,
+                    viewModel: viewModel,
                     hasCalibration: viewModel.calibrationData != nil
                 )
             }

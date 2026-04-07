@@ -139,10 +139,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             object: nil
         )
 
-        // Refresh menubar title immediately when scrape data arrives
+        // Refresh menubar title when scrape data arrives — deferred to the
+        // next runloop tick to avoid layout recursion inside NSStatusBarButton.
         NotificationCenter.default.addObserver(
             self,
-            selector: #selector(updateMenuBarTitle),
+            selector: #selector(updateMenuBarTitleAsync),
             name: .scrapeDataDidUpdate,
             object: nil
         )
@@ -177,8 +178,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         )
         RunLoop.main.add(timer, forMode: .common)
         updateTimer = timer
-        // Fire once immediately so the new cadence takes effect visibly
-        updateMenuBarTitle()
+        // Fire once asynchronously so the new cadence takes effect without
+        // triggering layout recursion when called mid-layout pass.
+        DispatchQueue.main.async { [weak self] in
+            self?.updateMenuBarTitle()
+        }
     }
 
     @objc private func togglePanel() {
@@ -246,6 +250,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func windowDidResignKey(_ notification: Notification) {
         closePanel()
+    }
+
+    @objc private func updateMenuBarTitleAsync() {
+        DispatchQueue.main.async { [weak self] in
+            self?.updateMenuBarTitle()
+        }
     }
 
     @objc private func updateMenuBarTitle() {

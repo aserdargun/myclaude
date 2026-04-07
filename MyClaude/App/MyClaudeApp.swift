@@ -147,13 +147,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             object: nil
         )
 
+        // Restart the menu bar update timer when the user changes auto-refresh rate
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(restartMenuBarTimer),
+            name: .scrapeIntervalDidChange,
+            object: nil
+        )
+
         // Start view model
         viewModel.start()
 
-        // Timer to update attributed title — use .common mode so it fires
-        // even during menu tracking and other UI interactions
+        // Start timer synced with auto-refresh rate
+        restartMenuBarTimer()
+    }
+
+    @objc private func restartMenuBarTimer() {
+        updateTimer?.invalidate()
+        // Drive menu bar updates at the auto-refresh rate so the text visibly
+        // changes at the configured cadence. Use .common mode so it fires
+        // even during menu tracking and other UI interactions.
+        let interval = max(1, TimeInterval(viewModel.scrapeIntervalSeconds))
         let timer = Timer(
-            timeInterval: Constants.uiUpdateInterval,
+            timeInterval: interval,
             target: self,
             selector: #selector(updateMenuBarTitle),
             userInfo: nil,
@@ -161,7 +177,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         )
         RunLoop.main.add(timer, forMode: .common)
         updateTimer = timer
-
+        // Fire once immediately so the new cadence takes effect visibly
+        updateMenuBarTitle()
     }
 
     @objc private func togglePanel() {

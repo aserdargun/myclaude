@@ -54,6 +54,7 @@ final class UsageViewModel: NSObject, LogReaderDelegate, SessionEngineDelegate, 
             UserDefaults.standard.set(scrapeIntervalSeconds, forKey: "scrapeIntervalSeconds")
             restartScrapeTimer()
             logReader.updatePollInterval(TimeInterval(scrapeIntervalSeconds))
+            NotificationCenter.default.post(name: .scrapeIntervalDidChange, object: nil)
         }
     }
 

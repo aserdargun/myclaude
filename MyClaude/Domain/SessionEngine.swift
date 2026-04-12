@@ -31,6 +31,10 @@ final class SessionEngine {
     /// When set, overrides gap-based detection and uses this as the session start.
     private var calibratedSessionStart: Date?
 
+    /// When true, the server reported no active session — suppress gap-based
+    /// detection so we don't show a phantom countdown from stale local events.
+    private var serverReportsNoSession: Bool = false
+
     init(sessionDuration: TimeInterval = Constants.sessionDuration) {
         self.sessionDuration = sessionDuration
     }
@@ -40,13 +44,17 @@ final class SessionEngine {
     /// Override session start time from calibration (user entered from Claude settings).
     func overrideSessionStart(_ start: Date) {
         calibratedSessionStart = start
+        serverReportsNoSession = false
         updateCurrentSession()
         delegate?.sessionEngine(self, didUpdateSession: currentSession)
     }
 
     /// Clear calibrated session — server reports no active session.
+    /// Also suppresses gap-based detection so stale local events
+    /// don't produce a phantom countdown.
     func clearCalibratedSession() {
         calibratedSessionStart = nil
+        serverReportsNoSession = true
         updateCurrentSession()
         delegate?.sessionEngine(self, didUpdateSession: currentSession)
     }
@@ -67,6 +75,9 @@ final class SessionEngine {
                 addedNew = true
             }
         }
+
+        // New events mean the user is active again — allow gap-based detection.
+        if addedNew { serverReportsNoSession = false }
 
         guard addedNew else {
             delegate?.sessionEngine(self, didUpdateSession: currentSession)
@@ -134,6 +145,13 @@ final class SessionEngine {
     /// "Resets in" = windowEnd − now.
     private func updateCurrentSession() {
         let now = Date()
+
+        // Server explicitly says no active session — don't create one
+        // from local events. Show no session until next scrape detects one.
+        if serverReportsNoSession && calibratedSessionStart == nil {
+            currentSession = nil
+            return
+        }
 
         // If user provided a calibrated session start, use continuous 5h periods.
         // With Pro/Max subscription there's always an active period — when one

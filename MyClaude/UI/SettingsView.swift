@@ -1,7 +1,9 @@
 import SwiftUI
+import ServiceManagement
 
 struct SettingsView: View {
     let viewModel: UsageViewModel
+    @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -19,6 +21,35 @@ struct SettingsView: View {
                     .font(.headline)
                     .fontWeight(.bold)
                 Spacer()
+            }
+
+            Divider()
+
+            // Launch at Login
+            HStack {
+                Toggle(isOn: $launchAtLogin) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "power")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        Text("Launch at Login")
+                            .font(.caption)
+                    }
+                }
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .onChange(of: launchAtLogin) { _, newValue in
+                    do {
+                        if newValue {
+                            try SMAppService.mainApp.register()
+                        } else {
+                            try SMAppService.mainApp.unregister()
+                        }
+                    } catch {
+                        // Revert toggle on failure
+                        launchAtLogin = SMAppService.mainApp.status == .enabled
+                    }
+                }
             }
 
             Divider()
